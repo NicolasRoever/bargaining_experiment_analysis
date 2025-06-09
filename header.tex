@@ -1,0 +1,254 @@
+ \documentclass[12pt, a4paper, american]{article}
+\usepackage[a4paper]{geometry}
+%\newgeometry{left=1in, bottom=1in, top=1in, right=1in}
+%\newgeometry{left=1.25in, bottom=1.25in, top=1.25in, right=1.25in}
+\renewcommand{\baselinestretch}{1.5}
+\usepackage{amsmath,a4,babel,booktabs,graphicx,rotating,float,amsfonts,mathtools, amsthm, amssymb}
+\usepackage[LGR,T1]{fontenc} % spell out all text encodings used
+\usepackage[utf8]{inputenc} %
+\usepackage{caption}
+\usepackage{subcaption} % for subfigures 
+\usepackage{graphicx, mathptmx}
+%\usepackage[position=top]{subfig}
+\usepackage[sort&compress]{natbib}
+
+\usepackage[plain]{fancyref} %fancy references
+\usepackage{microtype,framed} %other packages added
+\usepackage{wasysym}
+\usepackage{multirow,array}
+\usepackage{multicol}
+\usepackage{tcolorbox} % to create colored text boxes
+\usepackage{bbm}
+\usepackage{graphicx}
+\usepackage{enumitem} 
+\usepackage{xcolor}
+\usepackage{abbrevs}
+\usepackage{pgffor}
+\usepackage{comment}
+\usepackage{nicefrac}
+\setlength{\parskip}{5pt}
+\usepackage{setspace}
+\usepackage{titling}
+\onehalfspacing 
+\usepackage{pdflscape}
+\usepackage{threeparttable}
+\usepackage{soul}
+\usepackage{clipboard}
+\newclipboard{myclipboard}
+\usepackage[citecolor= black,
+			colorlinks=true,
+		    linkcolor = black,
+            urlcolor  = black]{hyperref}
+\usepackage{xurl}
+\usepackage{chngcntr}   % for per-chapter numbering of figures
+\usepackage{float}
+
+
+
+\newenvironment{q}%for the appendix
+{
+\setlength{\parindent}{0pt}
+}
+%
+\makeatletter
+\usepackage{tikz}
+\usepackage{verbatim}
+\usetikzlibrary{positioning, shapes, arrows, fit, backgrounds}
+\newcommand*{\h}{\hspace{5pt}}% for indentation
+\usepackage{epigraph} % for nice quote 
+\usepackage{makecell} % for nice table cells
+
+\newcommand{\ssection}[1]{\section[#1]{\centering #1}}
+
+\newgeometry{top=2.2cm, bottom=2.2cm, left=2.2cm, right=2.2cm}
+
+% ------------ Mathematical environments -----------
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+
+\theoremstyle{definition}
+\newtheorem{prediction}[theorem]{Prediction}
+
+
+% *****************************************************************
+% Estout related things
+% *****************************************************************
+\newcommand{\sym}[1]{\rlap{#1}}% Thanks to David Carlisle
+
+\let\estinput=\input% define a new input command so that we can still flatten the document
+
+\newcommand{\estwide}[3]{
+		\vspace{.75ex}{
+			\begin{tabular*}
+			{\textwidth}{@{\hskip\tabcolsep\extracolsep\fill}l*{#2}{#3}}
+			\toprule
+			\estinput{#1}
+			\bottomrule
+			\addlinespace[2.50ex]
+			\end{tabular*}
+			}
+		}	
+
+\newcommand{\estauto}[3]{
+		\vspace{.75ex}{
+			\begin{tabular}{l*{#2}{#3}}
+			\toprule
+			\estinput{#1}
+			\bottomrule
+			\addlinespace[2.75ex]
+			\end{tabular}
+			}
+		}
+
+% Allow line breaks with \\ in specialcells
+	\newcommand{\specialcell}[2][c]{%
+	\begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+
+%% For quote
+
+\makeatletter
+\newenvironment{chapquote}[2][3em]
+  {\setlength{\@tempdima}{#1}%
+   \def\chapquote@author{#2}%
+   \parshape 1 \@tempdima \dimexpr\textwidth-2\@tempdima\relax%
+   \itshape}
+  {\par\normalfont\hfill--\ \chapquote@author\hspace*{\@tempdima}\par\bigskip}
+\makeatother
+
+% *****************************************************************
+
+
+% *****************************************************************
+% Custom subcaptions
+% *****************************************************************
+% Note/Source/Text after Tables
+
+% Note/Source/Text after Tables
+\newcommand{\tabtext}[1]{%
+	\vspace{-0.5ex}
+ \begin{tablenotes}[para,flushleft]
+ \hspace{5pt}
+ \hangindent=1.75em
+ #1
+ \end{tablenotes}
+}
+
+\newcommand{\tabnote}[1]{\parbox{\linewidth}{\tabtext{\emph{Note:~}~#1}}}
+\newcommand{\tabsource}[1]{\tabtext{\emph{Source:~}~#1}}
+\newcommand{\starnote}{\vspace{0.75ex}\tabtext{* $p$\;<\;0.10, ** $p$\;<\;0.05, *** $p$\;<\;0.01. Robust standard errors in parentheses.}}
+\newcommand{\starnotebootstrap}{\vspace{0.75ex}\tabtext{* $p$\;<\;0.10, ** $p$\;<\;0.05, *** $p$\;<\;0.01. Bootstrapped standard errors in parentheses.}}
+
+\newcommand{\starnotesimple}{\vspace{0.75ex}\tabtext{* $p$\;<\;0.10, ** $p$\;<\;0.05, *** $p$\;<\;0.01.}}
+
+\newcommand{\starnotenonrobust}{\tabtext{* $p$\;<\;0.10, ** $p$\;<\;0.05, *** $p$\;<\;0.01. Standard errors in parentheses.}}
+
+% *****************************************************************
+% Custom subcaptions: Figure
+% *****************************************************************
+% Note/Source/Text after Tables
+\newcommand{\figtext}[1]{
+	\vspace{-0.5ex}
+	\captionsetup{justification=justified,font=small}
+	\caption*{\hspace{8pt}\hangindent=1.5em #1}
+	}
+%\newcommand{\fignote}[1]{\figtext{\scriptsize Notes:~#1}}
+\newcommand{\fignote}[1]{\figtext{\emph{Note:~}~#1}}
+
+\newcommand{\figsource}[1]{\figtext{\emph{Source:~}~#1}}
+
+% Character substitution that prints brackets and the minus symbol in text mode and does not reserve any space. Thanks to David Carlisle
+\def\yyy{%
+  \bgroup\uccode`\~\expandafter`\string-%
+  \uppercase{\egroup\edef~{\noexpand\text{\llap{\textendash}\relax}}}%
+  \mathcode\expandafter`\string-"8000 }
+
+\def\xxxl#1{%
+\bgroup\uccode`\~\expandafter`\string#1%
+\uppercase{\egroup\edef~{\noexpand\text{\noexpand\llap{\string#1}}}}%
+\mathcode\expandafter`\string#1"8000 }
+
+\def\xxxr#1{%
+\bgroup\uccode`\~\expandafter`\string#1%
+\uppercase{\egroup\edef~{\noexpand\text{\noexpand\rlap{\string#1}}}}%
+\mathcode\expandafter`\string#1"8000 }
+\def\textsymbols{\xxxl[\xxxr]\xxxl(\xxxr)\yyy}
+
+% *****************************************************************
+% siunitx
+% *****************************************************************
+\usepackage{siunitx} % centering in tables
+	\sisetup{
+		detect-mode,
+		tight-spacing		= true,
+		group-digits		= false ,
+		input-signs		= ,
+		input-symbols		= ( ) [ ] - + *,
+		input-open-uncertainty	= ,
+		input-close-uncertainty	= ,
+		table-align-text-post	= false
+        }
+
+\usepackage{footmisc} %NR: Changed this to use numeric footnotes again
+\DefineFNsymbolsTM{myfnsymbols}{% def. from footmisc.sty "bringhurst" symbols
+  \textasteriskcentered *
+  \textdagger    \dagger
+  \textdaggerdbl \ddagger
+  \textsection   \mathsectionwe 
+%  \textbardbl    \|%
+%  \textparagraph \mathparagraph
+}%
+\setfnsymbol{myfnsymbols}
+
+
+
+\theoremstyle{definition}
+\newtheorem{prop}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+%\newtheorem{prediction}[theorem]{Prediction}
+\newtheorem{hypothesis}[theorem]{Hypothesis}
+
+\newtheorem{result}{Result}
+
+
+
+% ----------------------- Abbreviations ----------------------------------
+
+% General abbreviations
+\newcommand{\lucid}{Lucid}
+\newcommand{\fox}{\textit{Fox News}}
+\newcommand{\msnbc}{\textit{MSNBC}}
+\newcommand{\bidenrescueplan}{\textit{Biden Rescue Plan}}
+\newcommand{\americanrescueplan}{\textit{American Rescue Plan}}
+
+\newcommand{\onlineappendix}{Online Appendix}
+
+% Statistical abbreviations
+\newcommand{\n}{$n$\;=\;}
+\newcommand\onestar{$p$\;<\;0.10}
+\newcommand\twostar{$p$\;<\;0.05}
+\newcommand\threestar{$p$\;<\;0.01}
+\newcommand\nostar{$p$\;>\;0.10}
+\newcommand\pt{$p$\;<\;0.001}
+\newcommand{\p}{$p$\;=\;}
+
+% Experiment Instructions
+\newcommand{\includeInstructions}[1]{
+	\begin{center}
+		\includegraphics[width=0.90\textwidth]{#1.png}
+	\end{center}
+}
+
+
+\newcommand{\includeInstructionsLong}[1]{
+	\begin{center}
+		\includegraphics[height=0.95\textheight]{#1.png}
+	\end{center}
+}
+
+
+
+
+
+
