@@ -1,5 +1,5 @@
 ---
-name: template_project
+name: bargaining_analysis
 channels: [conda-forge, r, nodefaults]
 dependencies:
   - python ==3.12
@@ -22,16 +22,9 @@ dependencies:
   # Python template project dependencies
   - statsmodels
   - numpy
+  - matplotlib
   - pandas >=2.2
   - plotly >=5.2.0,<6
-
-  # R template project dependencies
-  - pytask-r >=0.4.1
-  - pyreadr
-  - r-plyr
-  - r-precommit
-  - r-yaml
-  - r-forcats
 
   # Install project
   - pip: [-e ., pdbp, kaleido, seaborn]

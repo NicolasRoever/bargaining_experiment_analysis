@@ -1,5 +1,9 @@
 # Templates for Reproducible Research Projects in Economics
 
+```bash
+ export PYTHONPATH=$PYTHONPATH:/Users/nicolasroever/Dropbox/Promotion/Bargaining/bargaining_experiment_analysis/src
+```
+
 ![MIT license](https://img.shields.io/github/license/OpenSourceEconomics/econ-project-templates)
 [![image](https://zenodo.org/badge/14557543.svg)](https://zenodo.org/badge/latestdoi/14557543)
 [![Documentation Status](https://readthedocs.org/projects/econ-project-templates/badge/?version=stable)](https://econ-project-templates.readthedocs.io/en/stable/)
