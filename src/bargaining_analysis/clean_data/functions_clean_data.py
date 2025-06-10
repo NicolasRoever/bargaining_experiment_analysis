@@ -18,7 +18,6 @@ def reshape_raw_bargaining_data(raw_data):
     pandas.DataFrame
         Reshaped data in long format with one row per player per round
     """
-    
     # 1. Define ID variables to keep
     id_vars = ['participant.id_in_session', 'participant.label', 'participant.role_in_game']
     
@@ -93,7 +92,7 @@ def clean_zero_TA_costs_two_sided_data(raw_data):
     df_clean = df_clean[df_clean['round'] > 1]
 
 
-    return df_clean, df_clean
+    return df_clean
     
     
 
@@ -122,17 +121,25 @@ def clean_data(raw_data):
     df_clean['participant_id'] = df_long_wide['participant.id_in_session']
     df_clean['participant_role'] = df_long_wide['participant.role_in_game']
     df_clean['round'] = df_long_wide['round']
-    df_clean['acceptance_time_sec'] = df_long_wide['acceptance_time'].astype('Int64')
+    if df_long_wide['bargain_start_time'].dtype == 'object':  # Assuming string with a date
+        df_clean['bargain_start_time_sec'] = pd.to_datetime(df_long_wide['bargain_start_time']).astype('int64') // 10**9
+    else:  # Assuming Unix timestamp
+        df_clean['bargain_start_time_sec'] = df_long_wide['bargain_start_time'].astype('Float64')
+    df_clean['acceptance_time_sec'] = df_long_wide['acceptance_time'].astype('Float64')
     df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
-    df_clean['bargaining_duration_sec'] = df_long_wide['bargaining_duration'].astype('Int64')
     df_clean["deal_price"] = df_long_wide["deal_price"]
     df_clean["computer_term_time_sec"] = df_long_wide["random_termination_time_current_round"]
     df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
     df_clean["termination_mode"] = df_long_wide["termination_mode"]
-    df_clean["termination_time_sec"] = df_long_wide["termination_time"].astype('Int64')
+    df_clean["termination_time_sec"] = df_long_wide["termination_time"].astype('Float64')
+    df_clean['bargaining_duration_acceptance'] = df_clean['acceptance_time_sec'] - df_clean['bargain_start_time_sec']
+    df_clean["bargaining_duration_termination"] = df_clean['termination_time_sec'] - df_clean['bargain_start_time_sec']
     
-    df_clean['bargaining_time_correct'] = df_clean['computer_term_time_sec'].combine_first(
-        df_clean['termination_time_sec']).combine_first(df_clean['acceptance_time_sec'])
+    df_clean['bargaining_time_full_sec'] = df_clean['bargaining_duration_acceptance'].combine_first(
+        df_clean['bargaining_duration_termination'])
+    
+
+    
     df_clean = add_offer_columns(
         raw_df=df_long_wide,
         df_clean=df_clean,
@@ -149,7 +156,7 @@ def clean_data(raw_data):
     )
     df_clean["number_of_offers"] = df_clean[
     [f"offer_{i}" for i in range(1, 11)]].count(axis=1)
-    df_clean["valuation"] = df_long_wide["valuation"]
+    df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
     df_clean['payoff'] = df_long_wide['payoff']
     df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
     df_clean["subsession.is_practice_round"] = df_long_wide["subsession.is_practice_round"]
@@ -182,6 +189,8 @@ def clean_data(raw_data):
     )
 
     df_clean = df_clean[np.isclose(df_clean["subsession.is_practice_round"], 0)]
+
+    df_clean["gains_from_trade"] = calculate_gains_from_trade(df_clean)
 
     ##Filter criteria
     df_clean = filter_out_mistake_rows(df_clean)
@@ -240,6 +249,15 @@ def add_offer_columns(raw_df: pd.DataFrame,
     
     return out
 
+# Define the piecewise function
+def equilibrium_payoff(x, c=0.05, r=0.01):
+    if x <= 7.72:
+        return 0
+    elif x >= 21.40:
+        return x/2
+    else:
+        b = x
+        return ((r*b + 2*c)/(r*21.40 + 2*c)) * (b/2 + c/r) - c/r
 
 
 def determine_first_offer(df: pd.DataFrame) -> pd.Series:
@@ -412,3 +430,5 @@ def filter_out_mistake_rows(df: pd.DataFrame) -> pd.DataFrame:
     )
     # reset_index so the result matches your expected
     return cleaned.reset_index(drop=True)
+
+

@@ -1,0 +1,3 @@
+[submodule "overleaf-docs"]
+	path = overleaf-docs
+	url = https://git.overleaf.com/6839b3ec614c465dff006dc0

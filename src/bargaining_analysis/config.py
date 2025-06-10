@@ -7,6 +7,9 @@ import seaborn as sns
 SRC = Path(__file__).parent.resolve()
 ROOT = SRC.joinpath("..", "..").resolve()
 
+OVERLEAF_FIGURES = ROOT.joinpath("overleaf-docs", "figures", "autom_figures").resolve()
+OVERLEAF_TABLES = ROOT.joinpath("overleaf-docs", "tables", "autom_tables").resolve()
+
 BLD = ROOT.joinpath("bld").resolve()
 
 DOCUMENTS = ROOT.joinpath("documents").resolve()

@@ -1,5 +1,6 @@
-from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME
-import matplotlib.pyplot as plt
+from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME, OVERLEAF_FIGURES, OVERLEAF_TABLES
+from src.bargaining_analysis.helper import inject_values
+import matplotlib.pyplot as plt 
 import seaborn as sns
 import pandas as pd
 import pytask
@@ -16,7 +17,7 @@ sns.set_style("white")
 def task_plot_comp_term_times(
     depends_on=SRC / "data" / "environment_data" / "termination_times_low_prob.pkl",
     color_scheme = COLOR_SCHEME,
-    produces= BLD / "figures" / "comp_term_times.pdf"):
+    produces= OVERLEAF_FIGURES / "comp_term_times.pdf"):
 
     term_times = pd.read_pickle(depends_on)
 
@@ -31,7 +32,7 @@ def task_plot_comp_term_times(
 
 def task_plot_buyer_vals_onesided(
         depends_on = SRC / "data" / "environment_data" / "participant_data_1_groups_one-sided.pkl",
-        produces = BLD / "figures" / "buyer_vals_onesided.pdf",
+        produces = OVERLEAF_FIGURES / "buyer_vals_onesided.pdf",
         color_scheme = COLOR_SCHEME):
 
     one_sided = pd.read_pickle(depends_on)
@@ -51,7 +52,7 @@ def task_plot_buyer_vals_onesided(
 
 def task_plot_buyer_vals_twosided(
         depends_on = SRC / "data" / "environment_data" / "participant_data_1_groups_two-sided.pkl",
-        produces = BLD / "figures" / "buyer_vals_twosided.pdf",
+        produces = OVERLEAF_FIGURES / "buyer_vals_twosided.pdf",
         color_scheme = COLOR_SCHEME):
 
     two_sided = pd.read_pickle(depends_on)
@@ -74,5 +75,26 @@ def task_plot_buyer_vals_twosided(
     sns.despine()
     
     plt.savefig(produces)
+
+
+def task_write_descriptive_table(
+    depends_on = BLD / "data" / "one_sided_with_TA.pkl"
+):
+    
+    one_sided = pd.read_pickle(depends_on)
+
+    n_participants_T4 = int(len(one_sided) / 30)
+
+
+    inject_values(
+        OVERLEAF_TABLES / "descriptives_table.tex",
+        n_participants_T4 = n_participants_T4
+    )
+
+
+
+
+    
+    
 
         
