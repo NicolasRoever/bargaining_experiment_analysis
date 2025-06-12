@@ -13,9 +13,9 @@ def task_plot_T4_buyer_payoff_vs_valuation(
     plot.savefig(produces)
 
 
-def task_generate_first_mover_effect_table(
-        depends_on = BLD / "data" / "two_sided_without_TA.pkl",
-        produces = OVERLEAF_TABLES / "first_mover_table.tex"
-):
-    df = pd.read_pickle(depends_on)
-    regress_first_mover(df, produces)
+# def task_generate_first_mover_effect_table(
+#         depends_on = BLD / "data" / "two_sided_without_TA.pkl",
+#         produces = OVERLEAF_TABLES / "first_mover_table.tex"
+# ):
+#     df = pd.read_pickle(depends_on)
+#     regress_first_mover(df, produces)

@@ -1,8 +1,8 @@
 # Precompile the pattern to find any \roever{var}{old_value}
 import re
 from pathlib import Path
-
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def inject_values(tex_path: Path, **variables):
@@ -36,3 +36,32 @@ def inject_values(tex_path: Path, **variables):
     
     # Write the updated content back to the file
     path.write_text(content, encoding='utf-8')
+
+
+def set_plot_theme():
+    # base seaborn theme & palette
+    sns.set_theme(
+        style="white",           # consistent with file_context_0
+        palette="deep",          # or your own list of colors
+        font="serif",            # consistent with file_context_0
+        font_scale=1.1
+    )
+
+    # tweak matplotlib rcParams you care about
+    plt.rcParams.update({
+        "text.usetex":       True,  # consistent with file_context_0
+        "axes.titlesize":    16,
+        "axes.labelsize":    14,
+        "legend.frameon":    False,
+        "figure.figsize":    (8, 5),
+        "lines.linewidth":   2,
+        "lines.markersize":  6,
+        "axes.grid":         False, # Disable grid
+        # …any other defaults…
+    })
+
+def finalize_plot(ax=None):
+    if ax is None:
+        ax = plt.gca()
+    sns.despine(ax=ax)
+    ax.figure.tight_layout()

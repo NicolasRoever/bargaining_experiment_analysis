@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 
+
+
 def reshape_raw_bargaining_data(raw_data):
     """
     Reshape bargaining data from wide to long format.
@@ -65,6 +67,60 @@ def reshape_raw_bargaining_data(raw_data):
     return df_long_wide
 
 
+def clean_data_asymmetric_TA(raw_data):
+    """
+    Clean the raw data by reshaping it and adding the termination times.
+    """
+    df_clean = clean_data(raw_data)
+
+    df_clean["efficiency"] = np.where(
+    (df_clean["gains_from_trade"] >= 0) & (df_clean["bargaining_outcome"] == "acceptance"),
+    1,
+    0
+    )
+
+    df_clean["treatment"] = "asymmetric_TA"
+    
+    return df_clean
+
+
+
+def compute_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
+    """
+    Compute the split of gains from trade for each row.
+
+    - If gains_from_trade == 0: return <NA>
+    - Else if participant_role == 'Seller': deal_price / gains_from_trade
+    - Else: 1 - (deal_price / gains_from_trade)
+
+    Returns
+    -------
+    pd.Series
+        A nullable-Float Series indexed like `df`, with name 'split_gains_from_trade'.
+    """
+    # pull into numpy floats so division by zero gives inf, not exception
+    deal = df["deal_price"].to_numpy(dtype=float)
+    gain = df["gains_from_trade"].to_numpy(dtype=float)
+
+    # elementwise division: inf where gain==0
+    ratio = deal / gain
+    # mask out those infinities (and any -inf) back to NaN
+    ratio[np.isinf(ratio)] = np.nan
+
+    # apply seller vs. buyer
+    split = np.where(
+        df["participant_role"] == "Seller",
+        ratio,
+        1 - ratio
+    )
+
+    # wrap as a pandas Series of nullable floats
+    return pd.Series(
+        split,
+        dtype="Float64"
+    )
+
+
 
 def clean_zero_TA_costs_two_sided_data(raw_data):
     """
@@ -73,7 +129,6 @@ def clean_zero_TA_costs_two_sided_data(raw_data):
 
     
     df_clean = clean_data(raw_data)
-    df_clean['gains_from_trade'] = calculate_gains_from_trade(df_clean)
 
     # 1. turn both series into plain float64 NumPy arrays
     payoff = df_clean["payoff"].to_numpy(dtype="float64")
@@ -121,23 +176,22 @@ def clean_data(raw_data):
     df_clean['participant_id'] = df_long_wide['participant.id_in_session']
     df_clean['participant_role'] = df_long_wide['participant.role_in_game']
     df_clean['round'] = df_long_wide['round']
-    if df_long_wide['bargain_start_time'].dtype == 'object':  # Assuming string with a date
-        df_clean['bargain_start_time_sec'] = pd.to_datetime(df_long_wide['bargain_start_time']).astype('int64') // 10**9
-    else:  # Assuming Unix timestamp
-        df_clean['bargain_start_time_sec'] = df_long_wide['bargain_start_time'].astype('Float64')
-    df_clean['acceptance_time_sec'] = df_long_wide['acceptance_time'].astype('Float64')
     df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
     df_clean["deal_price"] = df_long_wide["deal_price"]
-    df_clean["computer_term_time_sec"] = df_long_wide["random_termination_time_current_round"]
-    df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
-    df_clean["termination_mode"] = df_long_wide["termination_mode"]
-    df_clean["termination_time_sec"] = df_long_wide["termination_time"].astype('Float64')
-    df_clean['bargaining_duration_acceptance'] = df_clean['acceptance_time_sec'] - df_clean['bargain_start_time_sec']
-    df_clean["bargaining_duration_termination"] = df_clean['termination_time_sec'] - df_clean['bargain_start_time_sec']
     
-    df_clean['bargaining_time_full_sec'] = df_clean['bargaining_duration_acceptance'].combine_first(
-        df_clean['bargaining_duration_termination'])
+
+    #Time variables
+    df_clean["bargaining_duration"] = df_long_wide["bargaining_duration"]
+    df_clean['bargain_start_time_unix'] = df_long_wide['bargain_start_time'].astype('Float64')
+    df_clean["acceptance_time_unix"] = df_long_wide["acceptance_time"].astype('Float64')
+    df_clean["termination_time_unix"] = df_long_wide["termination_time"].astype('Float64')
+    df_clean["bargain_time_acceptance"] = df_clean["acceptance_time_unix"] - df_clean["bargain_start_time_unix"]
+    df_clean["bargain_time_termination"] = df_clean["termination_time_unix"] - df_clean["bargain_start_time_unix"]
+
+    df_clean["total_TA_costs"] = df_long_wide["current_payoff_terminate"]
     
+
+    df_clean["bargaining_time_full_sec"] = df_clean.apply(add_bargaining_in_seconds_column, axis=1)
 
     
     df_clean = add_offer_columns(
@@ -154,34 +208,26 @@ def clean_data(raw_data):
     list_col='offer_time_list',
     prefix='offer_time'
     )
+
     df_clean["number_of_offers"] = df_clean[
-    [f"offer_{i}" for i in range(1, 11)]].count(axis=1)
+    [f"offer_{i}" for i in range(1, 20)]].count(axis=1)
+
     df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
     df_clean['payoff'] = df_long_wide['payoff']
     df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
     df_clean["subsession.is_practice_round"] = df_long_wide["subsession.is_practice_round"]
     df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
-    df_clean["player_terminated"] =   np.where(
-        df_clean['terminated_by_id_in_group'].isna()
-        | df_clean['id_in_group'].isna(),
+    df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
+    df_clean["termination_mode"] = df_long_wide["termination_mode"]
+
+    df_clean["player_terminated"] =  np.where(
+        df_clean['terminated_by_id_in_group'].isna(),
         pd.NA,
-        np.where(
-            np.isclose(df_clean['terminated_by_id_in_group'],
-                       df_clean['id_in_group']),1,0 ))
+        1)
+
     
     df_clean["first_offer"] = determine_first_offer(df_clean)
 
-
-    conditions = [
-        df_clean['valuation'] == 0,
-        df_clean['valuation'].between(1, 9, inclusive='both'),
-        df_clean['valuation'].between(10, 19, inclusive='both'),
-        df_clean['valuation'] >= 20,
-    ]
-    choices = ['0', '1-9', '10-19', '20+']
-
-    df_clean['valuation_bucket'] = (
-            np.select(conditions, choices, default=pd.NA))
     
     df_clean['bargaining_outcome'] = (
     df_clean['termination_mode']
@@ -191,34 +237,96 @@ def clean_data(raw_data):
     df_clean = df_clean[np.isclose(df_clean["subsession.is_practice_round"], 0)]
 
     df_clean["gains_from_trade"] = calculate_gains_from_trade(df_clean)
+    df_clean["split_gains_from_trade"] = compute_split_gains_from_trade(df_clean)
 
+
+    #Add Ultimatum Offer
+
+    df_clean["ultimatum_offer"] = map_round33_variable(df_long_wide, df_clean, "ultimatum_offer")
+    df_clean["ultimatum_indicator"] = np.where(
+        df_clean["ultimatum_offer"]<= 25,
+        1,
+        0
+    )
+
+    # Add Risk Choice
+    df_clean["risk_elicitation_choice"] = map_round33_variable(df_long_wide, df_clean, "risk_elicitation_choice")
+
+
+    #Add time preferences
+    df_clean = add_time_row_columns(df_long_wide, df_clean)
+    check_monotonicity_for_time_preferences(df_clean)
+    df_clean["time_preference_switching_points"] = find_time_preference_switching_points(df_clean)
+
+    #Add Bargain Beginning and End
+    df_clean["experiment_start_time"] = map_round33_variable(
+        df_long_wide, df_clean, "experiment_start_time", round_number=1)
+    df_clean["experiment_end_time"] = map_round33_variable(df_long_wide, df_clean, "experiment_end_time")
+    df_clean["experiment_duration"] = df_clean["experiment_end_time"] - df_clean["experiment_start_time"]
+
+
+    #Add Age
+    df_clean["age"] = map_round33_variable(df_long_wide, df_clean, "age")
+    #Add Gender
+    df_clean["gender"] = map_round33_variable(df_long_wide, df_clean, "gender")
+
+    #Add Strategy Question
+    df_clean["strategy_answer"] = map_round33_variable(df_long_wide, df_clean, "question_strategy", dtype="str", round_number=1)
+    
+    #Calculate Mistakes
+    df_clean["mistake"] = np.where(
+        df_clean["total_TA_costs"]  > df_clean["payoff"],
+        1,
+        0
+    )
+    
     ##Filter criteria
-    df_clean = filter_out_mistake_rows(df_clean)
+    #df_clean = filter_out_mistake_rows(df_clean)
 
-    df_clean = df_clean[df_clean['round'] > 1]
+    #df_clean = df_clean[df_clean['round'] > 1]
 
     return df_clean
 
 
+
+def add_bargaining_in_seconds_column(row: pd.Series) -> float:
+    """
+    Compute the effective bargaining duration in seconds.
+
+    Rules:
+      1. If `bargaining_duration` < 500, keep that value.
+      2. Otherwise:
+         - If `bargain_time_acceptance` is non-NA, use that.
+         - Else, use `bargain_time_termination` (may be NA).
+    """
+    bd = row["bargaining_duration"]
+    if bd < 500:
+        return bd
+
+    acc = row["bargain_time_acceptance"]
+    if pd.notna(acc):
+        return acc
+
+    return row["bargain_time_termination"]
 
 def add_offer_columns(raw_df: pd.DataFrame,
                       df_clean: pd.DataFrame,
                       list_col: str = 'amount_proposed_list',
                       prefix: str = 'offer') -> pd.DataFrame:
     """
-    Given your raw‐format data (with stringified lists of offers) and
-    your partially cleaned long‐form df, parse out the lists and
+    Given your raw-format data (with stringified lists of offers) and
+    your partially cleaned long-form df, parse out the lists and
     append offer_1, offer_2, … columns to df_clean.
     
     Parameters
     ----------
     raw_df : pd.DataFrame
-        The original wide‐format DataFrame containing `list_col` as strings
+        The original wide-format DataFrame containing `list_col` as strings
         like "[15.00000000001, 29.00000000001, …]".
     df_clean : pd.DataFrame
-        Your long‐form DataFrame (must be aligned/indexed the same as raw_df).
+        Your long-form DataFrame (must be aligned/indexed the same as raw_df).
     list_col : str
-        Column in raw_df holding the string‐lists.
+        Column in raw_df holding the string-lists.
     prefix : str
         Base name for new columns; will produce prefix_1, prefix_2, …
     
@@ -291,7 +399,7 @@ def determine_first_offer(df: pd.DataFrame) -> pd.Series:
         .apply(label_group)
     )
 
-    # 2) re‐order to match exactly df’s index ordering
+    # 2) re‐order to match exactly df's index ordering
     return labels.loc[df.index]
 
 
@@ -420,15 +528,140 @@ def plot_bargaining_rounds(df_clean, round1, round2):
 def filter_out_mistake_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
     Filters out all rows for any (round, group_id_in_round) where
-    one of the trading partners has gains_from_trade < -15. Note that this only approximates our pre-specified criterion, but this should be fine
+    one of the trading partners has payoffs < -15. Note that this only approximates our pre-specified criterion, but this should be fine
     """
     # keep only those groups whose minimum gain is >= -15
     cleaned = (
         df
         .groupby(['round', 'group_id_in_round'])
-        .filter(lambda g: g['gains_from_trade'].min() >= -15)
+        .filter(lambda g: g['payoff'].min() >= -15)
     )
     # reset_index so the result matches your expected
     return cleaned.reset_index(drop=True)
 
+
+def add_time_row_columns(raw_df: pd.DataFrame,
+                        df_clean: pd.DataFrame,
+                        prefix: str = 'time_row') -> pd.DataFrame:
+    """
+    Add time row columns (1-6) from round 33 to all rounds for each participant.
+    
+    Parameters
+    ----------
+    raw_df : pd.DataFrame
+        The original wide-format DataFrame containing time_row_1 through time_row_6 columns
+    df_clean : pd.DataFrame
+        Your long-form DataFrame (must be aligned/indexed the same as raw_df)
+    prefix : str
+        Base name for the columns (default: 'time_row')
+    
+    Returns
+    -------
+    pd.DataFrame
+        A copy of df_clean with the time row columns added for all rounds
+    """
+    out = df_clean.copy()
+    
+    # Get time row values from round 33
+    time_row_map = (
+        raw_df
+        .loc[raw_df["round"] == 33]
+        .set_index("participant.id_in_session")
+    )
+    
+    # Add each time row column by mapping from round 33 values
+    for i in range(1, 7):
+        col = f"{prefix}_{i}"
+        out[col] = out["participant_id"].map(time_row_map[col]).astype('Float64')
+    
+    return out
+
+
+
+def find_time_preference_switching_points(df: pd.DataFrame) -> pd.Series:
+    """
+    Scan each row's time_row_1 … time_row_6 columns in order,
+    return the index (1–6) of the first value equal to 2.0.
+    If no 2.0 appears in that row, return 7.0.
+    """
+    # grab and sort the six time_row columns
+    cols = sorted(
+        (c for c in df.columns if c.startswith("time_row_")),
+        key=lambda c: int(c.rsplit("_", 1)[-1])
+    )
+    n = len(cols)
+    # for each row, find first 2.0 or default to n+1
+    def _first2(row):
+        for i, col in enumerate(cols, start=1):
+            if row[col] == 2.0:
+                return int(i)
+        return int(n + 1)
+    return df.apply(_first2, axis=1)
+
+
+def check_monotonicity_for_time_preferences(df: pd.DataFrame) -> None:
+    """
+    Ensures each row's time_row_1 … time_row_6 values switch from 1→2 at most once,
+    and never switch back from 2→1. Raises ValueError if any row violates this.
+    """
+    # pick out & sort the six time_row columns
+    cols = sorted(
+        (c for c in df.columns if c.startswith("time_row_")),
+        key=lambda c: int(c.rsplit("_", 1)[-1])
+    )
+
+    for idx, row in df[cols].iterrows():
+        # drop any NAs and keep the sequence of actual 1s/2s
+        vals = [v for v in row.tolist() if pd.notna(v)]
+        transitions = 0
+        for prev, curr in zip(vals, vals[1:]):
+            if prev == 1 and curr == 2:
+                transitions += 1
+                if transitions > 1:
+                    raise ValueError(
+                        f"Row {idx!r} has more than one 1→2 transition: {vals}"
+                    )
+            elif prev == 2 and curr == 1:
+                raise ValueError(
+                    f"Row {idx!r} switches back from 2→1: {vals}"
+                )
+
+
+def map_round33_variable(raw_df: pd.DataFrame, 
+                        df_clean: pd.DataFrame, 
+                        variable: str, 
+                        dtype: str = 'Float64', 
+                        round_number: int = 33) -> pd.Series:
+    """
+    Maps a variable from round 33 to all rounds for each participant.
+    
+    Parameters
+    ----------
+    raw_df : pd.DataFrame
+        The original wide-format DataFrame containing the variable
+    df_clean : pd.DataFrame
+        Your long-form DataFrame to add the mapped variable to
+    variable : str
+        Name of the variable to map from round 33
+    dtype : str, optional
+        Data type to convert the mapped values to (default: 'Float64')
+    
+    Returns
+    -------
+    pd.Series
+        The mapped variable as a Series with the same index as df_clean
+    """
+    # Check if the variable exists in the DataFrame
+    if variable not in raw_df.columns:
+        return pd.Series(pd.NA, index=df_clean.index, dtype=dtype)
+    
+    # Create mapping from round 33
+    var_map = (
+        raw_df
+        .loc[raw_df["round"] == round_number]
+        .set_index("participant.id_in_session")[variable]
+    )
+    
+    # Map to all rounds and convert to specified dtype
+    return df_clean["participant_id"].map(var_map).astype(dtype)
 

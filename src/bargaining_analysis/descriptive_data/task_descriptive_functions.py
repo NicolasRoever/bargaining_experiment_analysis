@@ -1,16 +1,11 @@
 from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME, OVERLEAF_FIGURES, OVERLEAF_TABLES
+from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices
 from src.bargaining_analysis.helper import inject_values
 import matplotlib.pyplot as plt 
 import seaborn as sns
 import pandas as pd
 import pytask
 
-
-
-COLOR_SCHEME=["#3c5488", "#e64b35", "#4dbbd5", "#00a087", "#f39b7f"]
-plt.rcParams["text.usetex"] = True
-plt.rcParams["font.family"] = "serif"
-sns.set_style("white")
 
 
 
@@ -78,23 +73,69 @@ def task_plot_buyer_vals_twosided(
 
 
 def task_write_descriptive_table(
-    depends_on = BLD / "data" / "one_sided_with_TA.pkl"
+    depends_on = BLD / "data" / "merged_data.csv"
 ):
     
-    one_sided = pd.read_pickle(depends_on)
+    df = pd.read_csv(depends_on)
 
-    n_participants_T4 = int(len(one_sided) / 30)
+    n_participants_T4 = int(len(df[df["treatment"] == "asymmetric_TA"]) / 30) + 1
+    mean_session_duration_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["experiment_duration"].mean() / 60, 2)
+    mean_age_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["age"].mean(), 2)
+    share_females_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["gender"].value_counts(normalize=True).get(2, 0) * 100, 2)
 
 
     inject_values(
         OVERLEAF_TABLES / "descriptives_table.tex",
-        n_participants_T4 = n_participants_T4
+        n_participants_T4 = n_participants_T4,
+        mean_session_duration_T4 = mean_session_duration_T4,
+        mean_age_T4 = mean_age_T4,
+        share_females_T4 = share_females_T4
+    )
+
+
+def task_inject_values_for_mistakes(
+    depends_on = BLD / "data" / "merged_data.csv",
+):
+    df = pd.read_csv(depends_on)
+
+    total_number_mistakes = df["mistake"].sum()
+    total_number_negotiations = (len(df)) / 2
+    average_session_duration = round(df["experiment_duration"].mean() / 60, 2)
+
+    inject_values(
+        OVERLEAF_TABLES.parents[1] / "main.tex",
+        total_number_mistakes = total_number_mistakes,
+        total_number_negotiations = total_number_negotiations,
+        average_session_duration = average_session_duration
     )
 
 
 
+def task_plot_time_preference_switching_points(
+    depends_on = BLD / "data" / "merged_data.csv",
+    produces = OVERLEAF_FIGURES / "time_preference_switching_points.pdf"
+):
+    one_sided = pd.read_csv(depends_on)
+    plot_time_preference_switching_points(one_sided)
+    plt.savefig(produces)
 
-    
-    
+
+def task_plot_ultimatum_offer_histogram(
+    depends_on = BLD / "data" / "merged_data.csv",
+    produces = OVERLEAF_FIGURES / "ultimatum_offer_histogram.pdf"
+):
+    one_sided = pd.read_csv(depends_on)
+    plot_ultimatum_offer_histogram(one_sided)
+    plt.savefig(produces)
+
+
+def task_plot_risk_elicitation_choices(
+    depends_on = BLD / "data" / "merged_data.csv",
+    produces = OVERLEAF_FIGURES / "risk_elicitation_choices.pdf"
+):
+    one_sided = pd.read_csv(depends_on)
+    plot_risk_elicitation_choices(one_sided)
+    plt.savefig(produces)
+
 
         
