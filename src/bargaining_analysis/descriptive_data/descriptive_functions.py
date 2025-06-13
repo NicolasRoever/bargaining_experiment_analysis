@@ -43,8 +43,7 @@ def plot_ultimatum_offer_histogram(df):
     ax = df[df["round"] == 33]["ultimatum_offer"].hist()
     plt.xlabel('Money to Keep in Euros')
     plt.ylabel('Frequency')
-    plt.title('Histogram of Ultimatum Offers in Round 33')
-    finalize_plot()
+    finalize_plot(ax=ax)
     return ax
 
 

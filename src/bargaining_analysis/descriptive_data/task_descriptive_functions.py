@@ -78,7 +78,7 @@ def task_write_descriptive_table(
     
     df = pd.read_csv(depends_on)
 
-    n_participants_T4 = int(len(df[df["treatment"] == "asymmetric_TA"]) / 30) + 1
+    n_participants_T4 = int(len(df[df["treatment"] == "asymmetric_TA"]) / 30) 
     mean_session_duration_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["experiment_duration"].mean() / 60, 2)
     mean_age_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["age"].mean(), 2)
     share_females_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["gender"].value_counts(normalize=True).get(2, 0) * 100, 2)

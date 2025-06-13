@@ -173,11 +173,16 @@ def clean_data(raw_data):
     df_clean = pd.DataFrame()
     df_long_wide = reshape_raw_bargaining_data(raw_data)
 
+
+    #Descriptive Variables
+
     df_clean['participant_id'] = df_long_wide['participant.id_in_session']
     df_clean['participant_role'] = df_long_wide['participant.role_in_game']
     df_clean['round'] = df_long_wide['round']
-    df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
-    df_clean["deal_price"] = df_long_wide["deal_price"]
+    breakpoint()
+    df_clean["session_id"] = df_long_wide["session_code"]
+    df_clean
+
     
 
     #Time variables
@@ -192,6 +197,10 @@ def clean_data(raw_data):
     
 
     df_clean["bargaining_time_full_sec"] = df_clean.apply(add_bargaining_in_seconds_column, axis=1)
+
+
+    df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
+    df_clean["deal_price"] = df_long_wide["deal_price"]
 
     
     df_clean = add_offer_columns(
