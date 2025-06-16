@@ -64,26 +64,26 @@ def clean_data_asymmetric_no_TA(raw_data):
     return df_clean
 
 
-def clean_zero_TA_costs_two_sided_data(raw_data):
-    """
-    Clean the raw data by reshaping it and adding the termination times.
-    """
+# def clean_zero_TA_costs_two_sided_data(raw_data):
+#     """
+#     Clean the raw data by reshaping it and adding the termination times.
+#     """
 
     
-    df_clean = clean_data(raw_data)
+#     df_clean = clean_data(raw_data)
 
-    # 1. turn both series into plain float64 NumPy arrays
-    payoff = df_clean["payoff"].to_numpy(dtype="float64")
-    gft    = df_clean["gains_from_trade"].to_numpy(dtype="float64")
+#     # 1. turn both series into plain float64 NumPy arrays
+#     payoff = df_clean["payoff"].to_numpy(dtype="float64")
+#     gft    = df_clean["gains_from_trade"].to_numpy(dtype="float64")
 
-    # 2. do the division; /0 → ±inf (no Python exception)
-    tmp = pd.Series(payoff / gft)
+#     # 2. do the division; /0 → ±inf (no Python exception)
+#     tmp = pd.Series(payoff / gft)
 
-    # 3. replace the infinities with pd.NA and give it back the nullable dtype
-    df_clean["split_gains_from_trade"] = tmp.replace([np.inf, -np.inf], pd.NA).astype("Float64")
+#     # 3. replace the infinities with pd.NA and give it back the nullable dtype
+#     df_clean["split_gains_from_trade"] = tmp.replace([np.inf, -np.inf], pd.NA).astype("Float64")
 
 
-    return df_clean
+#     return df_clean
 
 
 
@@ -107,6 +107,7 @@ def clean_data(raw_data):
     df_clean['participant_id'] = df_long_wide['participant.id_in_session']
     df_clean['participant_role'] = df_long_wide['participant.role_in_game']
     df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
+    df_clean["id_in_group"] = df_long_wide["id_in_group"]
     df_clean['round'] = df_long_wide['round']
     df_clean["session_id"] = df_long_wide["session.code"]
     df_clean["information_asymmetry"] = df_long_wide["session.config.information_asymmetry"]
@@ -178,6 +179,8 @@ def clean_data(raw_data):
 
     #Acceptance Information
     df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
+ 
+
     df_clean["deal_price"] = df_long_wide["deal_price"]
     df_clean["agreement_dummy"] = np.where(
         df_clean["bargaining_outcome"] == "acceptance",
@@ -895,3 +898,38 @@ def adjust_offer_times(
         out.loc[mask, offer_cols] = out.loc[mask, offer_cols].add(offset, axis=0)
 
     return out
+
+def calculate_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
+    """
+    Calculate the split gains from trade for each participant.
+
+    For sellers:
+        (deal_price − valuation) / gains_from_trade
+    For buyers:
+        (valuation − deal_price) / gains_from_trade
+
+    Parameters
+    ----------
+    df : pd.DataFrame or dict
+        Must contain columns 'gains_from_trade', 'valuation',
+        'participant_role', and 'deal_price'.
+
+    Returns
+    -------
+    pd.Series
+        Split of gains from trade, indexed same as input.
+    """
+
+    # boolean masks
+    is_seller = df['participant_role'] == 'Seller'
+    is_buyer  = df['participant_role'] == 'Buyer'
+
+    # compute numerators
+    num = pd.Series(index=df.index, dtype=float)
+    num[is_seller] = df.loc[is_seller, 'deal_price'] - df.loc[is_seller, 'valuation']
+    num[is_buyer]  = df.loc[is_buyer,  'valuation']  - df.loc[is_buyer,  'deal_price']
+
+    # split = numerator / total gains
+    split = num / df['gains_from_trade']
+
+    return split

@@ -1,11 +1,10 @@
 from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME, OVERLEAF_FIGURES, OVERLEAF_TABLES
-from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices
+from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values
 from src.bargaining_analysis.helper import inject_values
 import matplotlib.pyplot as plt 
 import seaborn as sns
 import pandas as pd
 import pytask
-
 
 
 
@@ -73,24 +72,19 @@ def task_plot_buyer_vals_twosided(
 
 
 def task_write_descriptive_table(
-    depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+    depends_on = BLD / "data" / "merged_data_full.csv"
 ):
-    
+    print("?t")
     df = pd.read_csv(depends_on)
 
-    n_participants_T4 = int(len(df[df["treatment"] == "asymmetric_TA"]) / 29) 
-    mean_session_duration_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["experiment_duration"].mean() / 60, 2)
-    mean_age_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["age"].mean(), 2)
-    share_females_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["gender"].value_counts(normalize=True).get(2, 0) * 100, 2)
-
+    descriptive_table_values = calculate_descriptive_table_values(df)
 
     inject_values(
         OVERLEAF_TABLES / "descriptives_table.tex",
-        n_participants_T4 = n_participants_T4,
-        mean_session_duration_T4 = mean_session_duration_T4,
-        mean_age_T4 = mean_age_T4,
-        share_females_T4 = share_females_T4
+        **descriptive_table_values
     )
+
+
 
 
 def task_inject_values_for_mistakes(
@@ -115,6 +109,7 @@ def task_plot_time_preference_switching_points(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "time_preference_switching_points.pdf"
 ):
+    print("?t")
     one_sided = pd.read_csv(depends_on)
     plot_time_preference_switching_points(one_sided)
     plt.savefig(produces)
@@ -124,6 +119,7 @@ def task_plot_ultimatum_offer_histogram(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "ultimatum_offer_histogram.pdf"
 ):
+    print("?t")
     one_sided = pd.read_csv(depends_on)
     plot_ultimatum_offer_histogram(one_sided)
     plt.savefig(produces)
@@ -133,6 +129,7 @@ def task_plot_risk_elicitation_choices(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "risk_elicitation_choices.pdf"
 ):
+    print("?t")
     one_sided = pd.read_csv(depends_on)
     plot_risk_elicitation_choices(one_sided)
     plt.savefig(produces)

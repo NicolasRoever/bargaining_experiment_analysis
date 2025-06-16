@@ -169,6 +169,7 @@ def calculate_descriptive_table_values(df: pd.DataFrame) -> dict:
             out[f'n_participants_{t}']        = ''
             out[f'n_groups_{t}']              = ''
             continue
+
         
         # mean session duration in minutes
         # (assumes df['experiment_duration'] in seconds)

@@ -77,6 +77,30 @@ def plot_T4_buyer_payoff_vs_valuation(
     return plt
 
 
+def regression_table_symmetric_treatment(data, path):
+
+    
+    first_mover_advantage = smf.ols(formula='split_gains_from_trade ~ first_offer', data=data).fit()
+
+    slient_signaling = smf.ols(formula='valuation ~ offer_time_1', data=data).fit()
+
+    pystout(models=[first_mover_advantage, slient_signaling],
+        file=path,
+        addnotes=['Here is a little note','And another one'],
+        digits=2,
+        endog_names=['Split Gains from Trade', "Valuation"],
+        varlabels={'const':'Constant','first_offer':'First Offer', 'offer_time_1':'First Offer Time'},
+        modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
+        )
+
+
+
+
+
+    
+
+
+
 def regress_first_mover(data, path):
 
     # Model 1
