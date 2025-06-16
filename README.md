@@ -7,9 +7,11 @@
 Overleaf workflow:
 ```bash
 cd overleaf-docs
+git pull
 git add .
-git commit -m "docs: update section 4"
-git push              
+git commit -m "Update"
+git push   
+cd ..       
 ```
 
 
