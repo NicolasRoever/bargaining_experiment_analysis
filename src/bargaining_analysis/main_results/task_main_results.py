@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def task_plot_T4_buyer_payoff_vs_valuation(
-        depends_on = BLD / "data" / "one_sided_with_TA.pkl",
+        depends_on = BLD / "data" / "asymmetric_TA.pkl",
         produces = OVERLEAF_FIGURES / "T4_buyer_payoff_vs_valuation.pdf"
 ):
     df = pd.read_pickle(depends_on)

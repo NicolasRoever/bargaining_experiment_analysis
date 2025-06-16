@@ -73,12 +73,12 @@ def task_plot_buyer_vals_twosided(
 
 
 def task_write_descriptive_table(
-    depends_on = BLD / "data" / "merged_data.csv"
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv"
 ):
     
     df = pd.read_csv(depends_on)
 
-    n_participants_T4 = int(len(df[df["treatment"] == "asymmetric_TA"]) / 30) 
+    n_participants_T4 = int(len(df[df["treatment"] == "asymmetric_TA"]) / 29) 
     mean_session_duration_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["experiment_duration"].mean() / 60, 2)
     mean_age_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["age"].mean(), 2)
     share_females_T4 = round(df[(df["treatment"] == "asymmetric_TA") & (df["round"] == 33)]["gender"].value_counts(normalize=True).get(2, 0) * 100, 2)
@@ -94,7 +94,7 @@ def task_write_descriptive_table(
 
 
 def task_inject_values_for_mistakes(
-    depends_on = BLD / "data" / "merged_data.csv",
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
 ):
     df = pd.read_csv(depends_on)
 
@@ -112,7 +112,7 @@ def task_inject_values_for_mistakes(
 
 
 def task_plot_time_preference_switching_points(
-    depends_on = BLD / "data" / "merged_data.csv",
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "time_preference_switching_points.pdf"
 ):
     one_sided = pd.read_csv(depends_on)
@@ -121,7 +121,7 @@ def task_plot_time_preference_switching_points(
 
 
 def task_plot_ultimatum_offer_histogram(
-    depends_on = BLD / "data" / "merged_data.csv",
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "ultimatum_offer_histogram.pdf"
 ):
     one_sided = pd.read_csv(depends_on)
@@ -130,7 +130,7 @@ def task_plot_ultimatum_offer_histogram(
 
 
 def task_plot_risk_elicitation_choices(
-    depends_on = BLD / "data" / "merged_data.csv",
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "risk_elicitation_choices.pdf"
 ):
     one_sided = pd.read_csv(depends_on)
