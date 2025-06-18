@@ -3,6 +3,16 @@ import re
 from pathlib import Path
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
+
+def fix_pandas_append_error():
+          #Fix pandas append error
+    if not hasattr(pd.DataFrame, "append"):
+        def _append(self, other, ignore_index=False, sort=False):
+            return pd.concat([self, other],
+                            ignore_index=ignore_index,
+                            sort=sort)
+        pd.DataFrame.append = _append
 
 
 def inject_values(tex_path: Path, **variables):
@@ -44,14 +54,14 @@ def set_plot_theme():
         style="white",           # consistent with file_context_0
         palette="deep",          # or your own list of colors
         font="serif",            # consistent with file_context_0
-        font_scale=1.1
+        font_scale=1.4           # Increased font scale for larger text
     )
 
     # tweak matplotlib rcParams you care about
     plt.rcParams.update({
         "text.usetex":       True,  # consistent with file_context_0
-        "axes.titlesize":    16,
-        "axes.labelsize":    14,
+        "axes.titlesize":    18,    # Increased title size
+        "axes.labelsize":    16,    # Increased label size
         "legend.frameon":    False,
         "figure.figsize":    (8, 5),
         "lines.linewidth":   2,

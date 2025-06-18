@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import math
 import numpy as np
+import seaborn as sns
+from src.bargaining_analysis.helper import finalize_plot, set_plot_theme
 
 def plot_time_preference_switching_points(df, round_number=33):
     """
@@ -51,6 +53,23 @@ def plot_time_preference_switching_points(df, round_number=33):
     finalize_plot(ax=ax)
 
     return fig
+
+
+def plot_gains_from_trade_histogram_two_sided(df):
+
+    set_plot_theme()
+
+    df_two_sided = df[(df["treatment"] == "T3") | (df["treatment"] == "T4")]
+    df_two_sided = df_two_sided.drop_duplicates(subset='negotiation_id', keep='first')
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(df_two_sided["gains_from_trade"], bins=30, kde=False)
+    plt.xlabel('Gains from Trade in Negotiation')
+    plt.ylabel('Count')
+    finalize_plot(ax=ax)
+    return fig
+
+
 
 def plot_ultimatum_offer_histogram(df, round_number=33, bins=10, hist_color=None):
     """

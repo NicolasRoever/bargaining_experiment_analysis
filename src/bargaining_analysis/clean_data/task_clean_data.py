@@ -62,6 +62,8 @@ def task_create_merged_data(
 
     dfs = [pd.read_pickle(p) for p in depends_on]
     merged_df = pd.concat(dfs, ignore_index=True)
+
+    merged_df['negotiation_id'] = merged_df.groupby(['session_id', 'round', 'group_id_in_round']).ngroup()
     merged_df.to_csv(produces, index=False)
 
 

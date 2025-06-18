@@ -200,6 +200,25 @@ def clean_data(raw_data):
         1,
         0
     )
+    df_clean["large_gains_from_trade_indicator"] = np.where(
+        df_clean["gains_from_trade"] >= 0.8,
+        1,
+        0
+    )
+
+    df_clean['positive_gains_symmetric_treatment'] = (
+    df_clean['gains_from_trade_dummy'] *
+    (df_clean['information_asymmetry'] == 'two-sided').astype(int)
+    )
+
+    df_clean["small_gains_from_trade_indicator"] = np.where(
+        (df_clean["gains_from_trade"] <= 10) & (df_clean["gains_from_trade"] >= 0),
+        1,
+        0
+    )
+
+    #First Offer Split
+    df_clean["first_offer_split"] = calculate_first_offer_split(df_clean)
 
     #Efficiency
     df_clean["efficiency"] = calculate_efficiency(df_clean)
@@ -823,5 +842,35 @@ def calculate_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
 
     # split = numerator / total gains
     split = num / df['gains_from_trade']
+
+    return split
+
+
+def calculate_first_offer_split(df: pd.DataFrame) -> pd.Series:
+    """
+    For rows where first_offer == 1:
+      - if participant_role == 'Seller', returns (offer_1 - valuation) / gains_from_trade
+      - if participant_role == 'Buyer',  returns (valuation - offer_1) / gains_from_trade
+    All other rows get pd.NA.
+    """
+    # create a nullable Float64 series filled with NA
+    split = pd.Series(pd.NA, index=df.index, dtype="Float64")
+
+    # masks
+    first = df['first_offer'] == 1
+    seller = first & (df['participant_role'] == 'Seller')
+    buyer  = first & (df['participant_role'] == 'Buyer')
+
+    # compute splits
+    split.loc[seller] = (
+        df.loc[seller, 'offer_1'] - df.loc[seller, 'valuation']
+    ) / df.loc[seller, 'gains_from_trade']
+
+    split.loc[buyer] = (
+        df.loc[buyer, 'valuation'] - df.loc[buyer, 'offer_1']
+    ) / df.loc[buyer, 'gains_from_trade']
+
+    # set infinites to pd.NA
+    split.replace([np.inf, -np.inf], pd.NA, inplace=True)
 
     return split

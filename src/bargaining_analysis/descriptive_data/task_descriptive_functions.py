@@ -1,5 +1,5 @@
 from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME, OVERLEAF_FIGURES, OVERLEAF_TABLES
-from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values, plot_bargaining_rounds
+from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values, plot_bargaining_rounds, plot_gains_from_trade_histogram_two_sided
 from src.bargaining_analysis.helper import inject_values
 import matplotlib.pyplot as plt 
 import seaborn as sns
@@ -18,6 +18,13 @@ def task_plot_bargaining_rounds(
     plt.savefig(produces)
 
 
+def task_plot_gains_from_trade_histogram_two_sided(
+    depends_on = BLD / "data" / "merged_data_full.csv",
+    produces = OVERLEAF_FIGURES / "gains_from_trade_histogram_two_sided.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot_gains_from_trade_histogram_two_sided(df)
+    plt.savefig(produces)
 
 def task_plot_comp_term_times(
     depends_on=SRC / "data" / "environment_data" / "termination_times_low_prob.pkl",
