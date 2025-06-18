@@ -1,4 +1,4 @@
-from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, clean_zero_TA_costs_two_sided_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA
+from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA
 from src.bargaining_analysis.helper import set_plot_theme       
 from src.bargaining_analysis.config import SRC, BLD
 import os
@@ -8,6 +8,16 @@ import pandas as pd
 
 
 set_plot_theme()
+
+
+
+def task_clean_data_symmetric_no_TA(
+        depends_on = SRC / "data" / "main" / "symmetric_No_TA" / "june_17_data.csv",
+        produces = BLD / "data" / "symmetric_no_TA.pkl"
+):
+    df = pd.read_csv(depends_on)
+    df = clean_data_symmetric_no_TA(df)
+    df.to_pickle(produces)
 
 
 def task_clean_data_asymmetric_TA(
@@ -40,7 +50,8 @@ def task_clean_data_asymmetric_no_TA(
 create_merged_data_dependencies = [
     BLD / "data" / "asymmetric_TA.pkl",
     BLD / "data" / "asymmetric_no_TA.pkl", 
-    BLD / "data" / "symmetric_TA.pkl"
+    BLD / "data" / "symmetric_TA.pkl", 
+    BLD / "data" / "symmetric_no_TA.pkl"
 ]
 
 

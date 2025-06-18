@@ -77,6 +77,31 @@ def plot_T4_buyer_payoff_vs_valuation(
     return plt
 
 
+def regression_table_asymmetric_treatment(data, path):
+
+    #Filter Data
+    df_one_sided = data[(data["treatment"] == "T3") | (data["treatment"] == "T4")]
+
+    #Run Regressions
+
+    first_offer = smf.ols(formula='first_offer ~ C(participant_role)', data=df_one_sided).fit()
+    split_gains = smf.ols(formula='split_gains_from_trade ~ C(participant_role) + C(TA_costs)', data=df_one_sided).fit()
+    efficiency = smf.ols(formula='efficiency ~ gains_from_trade + C(TA_costs)', data=df_one_sided).fit()
+    agreement = smf.ols(formula='agreement_dummy ~ C(TA_costs) + gains_from_trade', data=df_one_sided).fit()
+
+
+    #Create Table
+    pystout(models=[first_offer, split_gains, efficiency, agreement],
+    file=path,
+    addnotes=['\\textit{Notes:} These regressions are run on the data from the treatments with asymmetric uncertainty. Dummy First Offer is indicator equal to 1 if the player has made the first offer, split gains from trade is percentage of the surplus the player extracts from a successfull trade (we exclude transaction costs for this measure), efficiency is indicator equal to 1 if an agreement was reached and 0 otherwise (surplus is always at leas zero in the considered treatmends) and Dummy Agreement is an indicator equal to 1 if an agreement was reached.'],
+    digits=2,
+    endog_names=['Dummy First Offer', "Split Gains from Trade", "Efficiency", "Dummy Agreement"],
+    varlabels={'const':'Constant','first_offer':'First Offer', 'split_gains_from_trade':'Split Gains from Trade', 'efficiency':'Efficiency', 'agreement_dummy':'Dummy Agreement', 'C(participant_role)[T.Seller]':'Seller', 'C(TA_costs)[T.0.05]':'TA Costs $= 0.05$', 'gains_from_trade':'Gains from Trade'},
+    modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
+    )
+
+
+
 def regression_table_symmetric_treatment(data, path):
 
     
@@ -96,41 +121,22 @@ def regression_table_symmetric_treatment(data, path):
 
 
 
-
+def regression_table_one_sided_treatment(data, path):
     
+    first_offer = smf.ols(formula='first_offer ~ C(participant_role)', data=data).fit()
+
+    efficiency = smf.ols(formula='efficiency ~ gains_from_trade + C(TA_costs) + time_preference_switching_points + risk_elicitation_choice + ultimatum_indicator + C(information_asymmetry)', data=data).fit()
 
 
+    pystout(models=[first_offer, efficiency],
+            file=path,
+            addnotes=['First Offer is indicator equal to 1 if the player has made the first offer, efficiency is 1 if an agreement was reached when gains from trade are at least 0','And another one'],
+            digits=2,
+            endog_names=['First Offer', "Efficiency"],
+            varlabels={'const':'Constant','first_offer':'First Offer', 'efficiency':'Efficiency'},
+            modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
+            )
 
-def regress_first_mover(data, path):
-
-    # Model 1
-
-    df_1 = data.dropna(subset=["payoff", "first_offer"])
-
-    df_1["payoff"] = pd.to_numeric(df_1["payoff"], errors='coerce') 
-
-    model_1 = smf.ols(formula='payoff ~ first_offer', data=df_1).fit()
-
-    # Model 2
-
-    df_2 = data[data["split_gains_from_trade"] > 0]
-
-
-    df_2["payoff"] = pd.to_numeric(df_2["payoff"], errors='coerce') 
-
-    model_2 = smf.ols(formula='payoff ~ first_offer', data=df_2).fit()
-
-    #Model 3
-    model_3 = smf.ols(formula='bargaining_time_full_sec ~ valuation', data=data).fit()
-
-    pystout(models=[model_1, model_2, model_3],
-        file=path,
-        addnotes=['Here is a little note','And another one'],
-        digits=2,
-        endog_names=['Payoff','Split Gains from Trade', 'Bargaining Time'],
-        varlabels={'const':'Constant','first_offer':'First Offer'},
-        modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
-        )
 
 
     

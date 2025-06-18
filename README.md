@@ -18,8 +18,7 @@ cd ..
 
 ### Open To-Do
 
-- [ ] Check bargaining time calculation
-- [ ] Check number of offers calculation
+
 
 
 

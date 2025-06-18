@@ -63,6 +63,15 @@ def clean_data_asymmetric_no_TA(raw_data):
 
     return df_clean
 
+def clean_data_symmetric_no_TA(raw_data):
+    """
+    Clean the raw data by reshaping it and adding the termination times.
+    """
+
+    df_clean = clean_data(raw_data)
+
+    return df_clean
+
 
 # def clean_zero_TA_costs_two_sided_data(raw_data):
 #     """
@@ -120,19 +129,14 @@ def clean_data(raw_data):
     df_clean["cumulated_TA_costs"] = df_long_wide["cumulated_TA_costs"]
 
     #Time variables
-    df_clean["bargaining_duration"] = df_long_wide["bargaining_duration"]
     df_clean['bargain_start_time_unix'] = df_long_wide['bargain_start_time'].astype('Float64')
     df_clean["acceptance_time_raw"] = df_long_wide["acceptance_time"].astype('Float64')
     df_clean["termination_time_raw"] = df_long_wide["termination_time"].astype('Float64')
-
-
     df_clean = add_acceptance_time_sec(df_clean)
     df_clean = add_termination_time_sec(df_clean)
-
     df_clean["bargaining_time_full_sec"] = df_clean["acceptance_time_sec"].combine_first(df_clean["termination_time_sec"])
 
     df_clean["total_TA_costs"] = df_long_wide["current_payoff_terminate"]
-    
 
     
 
@@ -496,119 +500,6 @@ def add_row_with_buyer_valuation(df: pd.DataFrame) -> pd.Series:
 
 
 
-def plot_bargaining_rounds(df_clean, round1, round2):
-    """
-    Plot bargaining processes for two specified rounds.
-    
-    Parameters:
-    -----------
-    df_clean : pandas.DataFrame
-        The cleaned bargaining data
-    round1 : int
-        First round to visualize
-    round2 : int
-        Second round to visualize
-    """
-    # Filter data for the specified rounds
-    df_rounds = df_clean[df_clean['round'].isin([round1, round2])]
-
-    # Get unique pairs for each round
-    round_pairs = {}
-    for round_num in [round1, round2]:
-        round_pairs[round_num] = df_rounds[df_rounds['round'] == round_num]['group_id_in_round'].unique()
-
-    # Calculate number of pairs per round
-    max_pairs = max(len(pairs) for pairs in round_pairs.values())
-
-    # Find the maximum offer value across all pairs and rounds
-    max_offer = 0
-    for round_num in [round1, round2]:
-        for group_id in round_pairs[round_num]:
-            pair_data = df_rounds[(df_rounds['round'] == round_num) & 
-                                (df_rounds['group_id_in_round'] == group_id)]
-            buyer = pair_data[pair_data['participant_role'] == 'Buyer'].iloc[0]
-            seller = pair_data[pair_data['participant_role'] == 'Seller'].iloc[0]
-            
-            # Check all offers for both buyer and seller
-            for i in range(1, 11):
-                if pd.notna(buyer[f'offer_{i}']):
-                    max_offer = max(max_offer, buyer[f'offer_{i}'])
-                if pd.notna(seller[f'offer_{i}']):
-                    max_offer = max(max_offer, seller[f'offer_{i}'])
-
-    # Add some padding to the maximum value
-    max_offer = max_offer * 1.1
-
-    # Create a figure with subplots for each pair in each round
-    fig, axes = plt.subplots(2, max_pairs, figsize=(5*max_pairs, 10))
-    fig.suptitle(f'Bargaining Process: Rounds {round1} and {round2}', fontsize=16)
-
-    for round_idx, round_num in enumerate([round1, round2]):
-        pairs = round_pairs[round_num]
-        for pair_idx, group_id in enumerate(pairs):
-            ax = axes[round_idx, pair_idx]
-            
-            # Get data for this pair
-            pair_data = df_rounds[(df_rounds['round'] == round_num) & 
-                                (df_rounds['group_id_in_round'] == group_id)]
-            
-            # Get buyer and seller data
-            buyer = pair_data[pair_data['participant_role'] == 'Buyer'].iloc[0]
-            seller = pair_data[pair_data['participant_role'] == 'Seller'].iloc[0]
-            
-            # Plot buyer's offers
-            for i in range(1, 11):
-                if pd.notna(buyer[f'offer_{i}']) and pd.notna(buyer[f'offer_time_{i}']):
-                    ax.scatter(buyer[f'offer_time_{i}'], buyer[f'offer_{i}'], 
-                             color='blue', alpha=0.7, label='Buyer Offer' if i == 1 else None)
-            
-            # Plot seller's offers
-            for i in range(1, 11):
-                if pd.notna(seller[f'offer_{i}']) and pd.notna(seller[f'offer_time_{i}']):
-                    ax.scatter(seller[f'offer_time_{i}'], seller[f'offer_{i}'], 
-                             color='red', alpha=0.7, label='Seller Offer' if i == 1 else None)
-            
-            # Add valuation information
-            ax.text(0.02, 0.98, 
-                    f'Buyer Val: {buyer["valuation"]}\nSeller Val: {seller["valuation"]}\nOutcome: {buyer["bargaining_outcome"]}',
-                    transform=ax.transAxes, verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-            
-            # Add lines connecting offers for each player
-            buyer_times = [buyer[f'offer_time_{i}'] for i in range(1, 11) if pd.notna(buyer[f'offer_{i}']) and pd.notna(buyer[f'offer_time_{i}'])]
-            buyer_offers = [buyer[f'offer_{i}'] for i in range(1, 11) if pd.notna(buyer[f'offer_{i}']) and pd.notna(buyer[f'offer_time_{i}'])]
-            seller_times = [seller[f'offer_time_{i}'] for i in range(1, 11) if pd.notna(seller[f'offer_{i}']) and pd.notna(seller[f'offer_time_{i}'])]
-            seller_offers = [seller[f'offer_{i}'] for i in range(1, 11) if pd.notna(seller[f'offer_{i}']) and pd.notna(seller[f'offer_time_{i}'])]
-            
-            if buyer_times:
-                ax.plot(buyer_times, buyer_offers, 'b--', alpha=0.3)
-            if seller_times:
-                ax.plot(seller_times, seller_offers, 'r--', alpha=0.3)
-            
-            # Add termination time if applicable
-            if pd.notna(buyer['termination_time_sec']):
-                ax.axvline(x=buyer['termination_time_sec'], color='black', linestyle='--', alpha=0.5)
-                ax.text(buyer['termination_time_sec'], max_offer * 0.95, 'Termination', 
-                       rotation=90, verticalalignment='top')
-            
-            # Set title and labels
-            ax.set_title(f'Round {round_num}, Pair {group_id}')
-            ax.set_xlabel('Time (seconds)')
-            ax.set_ylabel('Offer Amount')
-            ax.set_ylim(0, max_offer)  # Set consistent y-axis range
-            ax.grid(True, alpha=0.3)
-            ax.legend()
-
-    # Hide empty subplots
-    for round_idx in range(2):
-        for pair_idx in range(max_pairs):
-            if pair_idx >= len(round_pairs[round_idx + round1]):
-                axes[round_idx, pair_idx].set_visible(False)
-
-    plt.tight_layout()
-    plt.show()
-
-
-
 def filter_out_mistake_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
     Filters out all rows for any (round, group_id_in_round) where
@@ -824,6 +715,7 @@ def add_termination_time_sec(df: pd.DataFrame) -> pd.DataFrame:
       else
           termination_time_sec = termination_time_raw
     """
+    
     mask = (
         df["session_id"].isin({"o1rrqa15", "1a8klj6g"})
         & df["termination_time_raw"].notna()

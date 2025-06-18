@@ -1,10 +1,21 @@
 from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME, OVERLEAF_FIGURES, OVERLEAF_TABLES
-from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values
+from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values, plot_bargaining_rounds
 from src.bargaining_analysis.helper import inject_values
 import matplotlib.pyplot as plt 
 import seaborn as sns
 import pandas as pd
 import pytask
+from src.bargaining_analysis.descriptive_data.balance_table import calculate_balance_table_values
+
+
+def task_plot_bargaining_rounds(
+    depends_on = BLD / "data" / "merged_data_full.csv",
+    produces = OVERLEAF_FIGURES / "bargaining_rounds_sample.pdf"
+):
+    print("?t")
+    df = pd.read_csv(depends_on)
+    plot_bargaining_rounds(df, 5, 6, random_state=52)
+    plt.savefig(produces)
 
 
 
@@ -136,3 +147,14 @@ def task_plot_risk_elicitation_choices(
 
 
         
+
+def task_make_balance_test_table(
+    depends_on = BLD / "data" / "merged_data_full.csv",
+    produces = OVERLEAF_TABLES / "balance_table.tex"
+):
+    
+    df = pd.read_csv(depends_on)
+    print("tt")
+    balance_test_values = calculate_balance_table_values(df)
+    inject_values(produces, **balance_test_values)
+
