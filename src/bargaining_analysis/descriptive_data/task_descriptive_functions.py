@@ -1,5 +1,5 @@
 from src.bargaining_analysis.config import SRC, BLD, COLOR_SCHEME, OVERLEAF_FIGURES, OVERLEAF_TABLES
-from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values, plot_bargaining_rounds, plot_gains_from_trade_histogram_two_sided
+from src.bargaining_analysis.descriptive_data.descriptive_functions import plot_time_preference_switching_points, plot_ultimatum_offer_histogram, plot_risk_elicitation_choices, calculate_descriptive_table_values,  plot_gains_from_trade_histogram_two_sided, plot_bargaining_rounds_by_id
 from src.bargaining_analysis.helper import inject_values
 import matplotlib.pyplot as plt 
 import seaborn as sns
@@ -12,9 +12,9 @@ def task_plot_bargaining_rounds(
     depends_on = BLD / "data" / "merged_data_full.csv",
     produces = OVERLEAF_FIGURES / "bargaining_rounds_sample.pdf"
 ):
-    print("?t")
     df = pd.read_csv(depends_on)
-    plot_bargaining_rounds(df, 5, 6, random_state=52)
+    negotiation_ids = [80, 401, 606, 1006]
+    fig = plot_bargaining_rounds_by_id(df, negotiation_ids, max_offers=10)
     plt.savefig(produces)
 
 
@@ -137,7 +137,7 @@ def task_plot_ultimatum_offer_histogram(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "ultimatum_offer_histogram.pdf"
 ):
-    print("?t")
+
     one_sided = pd.read_csv(depends_on)
     plot_ultimatum_offer_histogram(one_sided)
     plt.savefig(produces)
@@ -147,7 +147,7 @@ def task_plot_risk_elicitation_choices(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "risk_elicitation_choices.pdf"
 ):
-    print("?t")
+
     one_sided = pd.read_csv(depends_on)
     plot_risk_elicitation_choices(one_sided)
     plt.savefig(produces)

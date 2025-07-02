@@ -15,9 +15,23 @@ cd ..
 ```
 
 
-
 ### Open To-Do
 
+Basic Data Quality Checks: 
+- Acceptance time is always lower than bargaining time
+- Termination time is always lower than bargaining time
+- Offer Time 1 is always lower than bargaining time
+- Last offer time is always lower than bargaining time
+- People who fail these checks are sorted away for all analyses including time measures.
+
+- Participant with label 72TouSYb still has weird first offer times. We need to fix this somehow!
+- dwjn1hbc has negative first offer time, should exclude him as well
+
+
+### Errata
+
+- In the first 4 sessions, we recorded offer times, acceptance times and player termination times on the client, leading to in some cases large measurement errors caused by differences in time between the client and the server.
+- The accepted deal price is formatted by a sub function in the client in the first 4 sessions, leading to * 10 formatting error in few cases.  
 
 
 

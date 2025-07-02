@@ -23,25 +23,18 @@ def calculate_bargaining_actions_values(df: pd.DataFrame) -> dict:
     
     for t in treatments:
         grp = df[df['treatment'] == t]
-        
-        if grp.empty:
-            # no data for this treatment
-            for var in [
-                'bargaining_time_full_sec',
-                'number_of_offers',
-                'payoff',
-                'avg_random_termination',
-                'avg_player_termination',
-                'avg_deals'
-            ]:
-                out[f'{var}_{t}'] = ''
-                out[f'{var}_sd_{t}'] = ''
-            continue
+        grp_time = df[(df['treatment'] == t) & (df["time_inconsistency_dummy"] == 0)]
         
         # compute continuous statistics
-        for col in ['bargaining_time_full_sec', 'number_of_offers', 'payoff', 'efficiency']:
+        for col in ['number_of_offers', 'payoff', 'efficiency']:
             mean_val = grp[col].mean()
             sd_val   = grp[col].std(ddof=1)
+            out[f'{col}_{t}']     = f"{mean_val:.2f}"
+            out[f'{col}_sd_{t}']  = f"{sd_val:.2f}"
+
+        for col in ['bargaining_time_full_sec']:
+            mean_val = grp_time[col].mean()
+            sd_val   = grp_time[col].std(ddof=1)
             out[f'{col}_{t}']     = f"{mean_val:.2f}"
             out[f'{col}_sd_{t}']  = f"{sd_val:.2f}"
         
@@ -49,7 +42,6 @@ def calculate_bargaining_actions_values(df: pd.DataFrame) -> dict:
         rand_ind   = (grp['termination_mode'] == "Random_Termination").astype(int)
         player_ind = (grp['termination_mode'] == "Player").astype(int)
         deal_ind   = grp['termination_mode'].isna().astype(int)
-
         
         for key, series in [
             ('avg_random_termination', rand_ind),

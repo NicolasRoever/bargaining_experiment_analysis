@@ -3,6 +3,7 @@ import ast
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
+import re
 
 
 #------------------------------------------------------
@@ -35,9 +36,6 @@ def clean_data_asymmetric_TA(raw_data):
     Clean the raw data by reshaping it and adding the termination times.
     """
     df_clean = clean_data(raw_data)
-
-
-    df_clean["full_bargaining_duration_corr"] = df_clean["cumulated_TA_costs"]/0.05
     
     return df_clean
 
@@ -48,8 +46,6 @@ def clean_symmetric_TA_data(raw_data):
     """
 
     df_clean = clean_data(raw_data)
-
-    df_clean["full_bargaining_duration_corr"] = df_clean["cumulated_TA_costs"]/0.05
 
     return df_clean
 
@@ -73,29 +69,6 @@ def clean_data_symmetric_no_TA(raw_data):
     return df_clean
 
 
-# def clean_zero_TA_costs_two_sided_data(raw_data):
-#     """
-#     Clean the raw data by reshaping it and adding the termination times.
-#     """
-
-    
-#     df_clean = clean_data(raw_data)
-
-#     # 1. turn both series into plain float64 NumPy arrays
-#     payoff = df_clean["payoff"].to_numpy(dtype="float64")
-#     gft    = df_clean["gains_from_trade"].to_numpy(dtype="float64")
-
-#     # 2. do the division; /0 → ±inf (no Python exception)
-#     tmp = pd.Series(payoff / gft)
-
-#     # 3. replace the infinities with pd.NA and give it back the nullable dtype
-#     df_clean["split_gains_from_trade"] = tmp.replace([np.inf, -np.inf], pd.NA).astype("Float64")
-
-
-#     return df_clean
-
-
-
 #------------------------------------------------------
 # Large Main Data Cleaning Function used for all treatments
 #------------------------------------------------------
@@ -113,7 +86,9 @@ def clean_data(raw_data):
 
     #Descriptive Variables
 
-    df_clean['participant_id'] = df_long_wide['participant.id_in_session']
+    df_clean['participant_id_in_session'] = df_long_wide['participant.id_in_session']
+    df_clean['participant_label'] = df_long_wide['participant.label']
+    df_clean["participant_code"] = df_long_wide["participant.code"]
     df_clean['participant_role'] = df_long_wide['participant.role_in_game']
     df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
     df_clean["id_in_group"] = df_long_wide["id_in_group"]
@@ -124,21 +99,27 @@ def clean_data(raw_data):
     df_clean["treatment"] = determine_treatment_category(df_clean["information_asymmetry"], df_clean["TA_costs"])
     df_clean["subsession.is_practice_round"] = df_long_wide["subsession.is_practice_round"]
     df_clean["Role_Seller"] = np.where(df_clean["participant_role"] == "Seller", 1, 0)
+    check_participant_code_uniqueness(df_clean)
 
     #Transaction Costs
     df_clean["cumulated_TA_costs"] = df_long_wide["cumulated_TA_costs"]
 
-    #Time variables
-    df_clean['bargain_start_time_unix'] = df_long_wide['bargain_start_time'].astype('Float64')
-    df_clean["acceptance_time_raw"] = df_long_wide["acceptance_time"].astype('Float64')
+
+    #Time Variables
+    df_clean["acceptance_time_raw"] = df_long_wide["acceptance_time"]
     df_clean["termination_time_raw"] = df_long_wide["termination_time"].astype('Float64')
+    df_clean["bargain_start_time_unix"] = df_long_wide["bargain_start_time"].astype('Float64')
     df_clean = add_acceptance_time_sec(df_clean)
     df_clean = add_termination_time_sec(df_clean)
     df_clean["bargaining_time_full_sec"] = df_clean["acceptance_time_sec"].combine_first(df_clean["termination_time_sec"])
 
-    df_clean["total_TA_costs"] = df_long_wide["current_payoff_terminate"]
+    #Bargaining Outcome
+    df_clean["termination_mode"] = df_long_wide["termination_mode"]
+    df_clean['bargaining_outcome'] = (
+    df_clean['termination_mode']
+    .fillna('acceptance')
+    )
 
-    
 
     #Individual Offers and Offer Times
     df_clean = add_offer_columns(
@@ -157,44 +138,52 @@ def clean_data(raw_data):
 
     
     df_clean = adjust_offer_times(df_clean) #Fix for the first two sessions
-    df_clean["first_offer"] = determine_first_offer(df_clean)
-
-
+    df_clean["offer_amount_list"] = df_long_wide["amount_proposed_list"]
+    df_clean["offer_time_list"] = df_long_wide["offer_time_list"]
+    df_clean["last_offer"] = obtain_last_offer(df_clean)
+    df_clean["last_offer_time"] = last_offer_time(df_clean)
     offer_time_columns = [col for col in df_clean.columns if col.startswith("offer_time_")]
     df_clean["number_of_offers"] = df_clean[offer_time_columns].count(axis=1)
 
 
-    #Valuation and Payoff
-    df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
-    df_clean['payoff'] = df_long_wide['payoff']
-    df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
-    df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
-    df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
-    df_clean["termination_mode"] = df_long_wide["termination_mode"]
-    df_clean["player_terminated"] =  np.where(
-        df_clean['terminated_by_id_in_group'].isna(),
-        pd.NA,
-        1)
-
-    df_clean['bargaining_outcome'] = (
-    df_clean['termination_mode']
-      .fillna('acceptance')
-    )
-
     #Acceptance Information
     df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
- 
-
-    df_clean["deal_price"] = df_long_wide["deal_price"]
     df_clean["agreement_dummy"] = np.where(
         df_clean["bargaining_outcome"] == "acceptance",
         1,
         0
     )
 
+    #Valuation and Payoff
+    df_clean["deal_price"] = df_long_wide["deal_price"]
+    df_clean["deal_price"] = correct_deal_price(df_clean)
+    df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
+    df_clean['payoff'] = calculate_payoff(df_clean)
+    df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
+    df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
+    df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
+
+    df_clean["player_terminated"] =  np.where(
+        df_clean['terminated_by_id_in_group'].isna(),
+        0,
+        1)
+
+    # define your bins and labels
+    bins = [-np.inf, 7.72, 21.40, np.inf]
+    labels = ['Low', 'Medium', 'High']
+
+    # create the new column
+    df_clean['valuation_bucket'] = pd.cut(
+        df_clean['valuation'],
+        bins=bins,
+        labels=labels,
+        right=True,        # intervals are (...,] by default
+        include_lowest=True
+    )
+
     #Gains from Trade
     df_clean["gains_from_trade"] = calculate_gains_from_trade(df_clean)
-    df_clean["split_gains_from_trade"] = compute_split_gains_from_trade(df_clean)
+    df_clean["split_gains_from_trade"] = calculate_split_gains_from_trade(df_clean)
     df_clean["gains_from_trade_dummy"] = np.where(
         df_clean["gains_from_trade"] >= 0,
         1,
@@ -204,6 +193,12 @@ def clean_data(raw_data):
         df_clean["gains_from_trade"] >= 0.8,
         1,
         0
+    )
+
+    df_clean["majority_gains_from_trade_indicator"] = (
+    df_clean["split_gains_from_trade"]
+      .ge(0.5)           # yields True/False/NA
+      .astype("Int64")   # maps True→1, False→0, NA→<NA>
     )
 
     df_clean['positive_gains_symmetric_treatment'] = (
@@ -218,21 +213,20 @@ def clean_data(raw_data):
     )
 
     #First Offer Split
+    df_clean["first_offer"] = determine_first_offer(df_clean)
     df_clean["first_offer_split"] = calculate_first_offer_split(df_clean)
 
     #Efficiency
     df_clean["efficiency"] = calculate_efficiency(df_clean)
 
     #Add Dummy for information asymmetry
-    df_clean["valuation_info_public"] = np.where(
-        (df_clean["information_asymmetry"] == "one_sided") & (df_clean["participant_role"] == "Seller"),
+    df_clean["seller_info_public"] = np.where(
+        (df_clean["information_asymmetry"] == "one-sided") & (df_clean["participant_role"] == "Seller"),
         1,
         0
     )
 
-    #Add Dummy for interaction seller and information asymmetry
-    df_clean["interaction_seller_info_public"] = df_clean["Role_Seller"] * df_clean["valuation_info_public"]
-
+   
     #Add Ultimatum Offer
 
     df_clean["ultimatum_offer"] = map_round_variable(df_long_wide, df_clean, "ultimatum_offer")
@@ -268,7 +262,7 @@ def clean_data(raw_data):
     
     #Calculate Mistakes
     df_clean["mistake"] = np.where(
-        df_clean["total_TA_costs"]  > df_clean["payoff"],
+        (-df_clean["cumulated_TA_costs"])  > df_clean["payoff"],
         1,
         0
     )
@@ -302,7 +296,7 @@ def reshape_raw_bargaining_data(raw_data):
         Reshaped data in long format with one row per player per round
     """
     # 1. Define ID variables to keep
-    id_vars = ['participant.id_in_session', 'participant.label', 'participant.role_in_game', 'session.code', 'session.config.information_asymmetry', 'session.config.transaction_costs']
+    id_vars = ['participant.id_in_session', 'participant.label', 'participant.role_in_game', 'session.code','participant.code', 'session.config.information_asymmetry', 'session.config.transaction_costs']
 
     # 2. Identify round-specific measures
     value_vars = [col for col in raw_data.columns if col.startswith('bargain_live')]
@@ -352,46 +346,6 @@ def reshape_raw_bargaining_data(raw_data):
 #------------------------------------------------------
 # Lowest Level Data Cleaning Functions Generating Individual Columns
 #------------------------------------------------------
-
-
-
-
-
-def compute_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
-    """
-    Compute the split of gains from trade for each row.
-
-    - If gains_from_trade == 0: return <NA>
-    - Else if participant_role == 'Seller': deal_price / gains_from_trade
-    - Else: 1 - (deal_price / gains_from_trade)
-
-    Returns
-    -------
-    pd.Series
-        A nullable-Float Series indexed like `df`, with name 'split_gains_from_trade'.
-    """
-    # pull into numpy floats so division by zero gives inf, not exception
-    deal = df["deal_price"].to_numpy(dtype=float)
-    gain = df["gains_from_trade"].to_numpy(dtype=float)
-
-    # elementwise division: inf where gain==0
-    ratio = deal / gain
-    # mask out those infinities (and any -inf) back to NaN
-    ratio[np.isinf(ratio)] = np.nan
-
-    # apply seller vs. buyer
-    split = np.where(
-        df["participant_role"] == "Seller",
-        ratio,
-        1 - ratio
-    )
-
-    # wrap as a pandas Series of nullable floats
-    return pd.Series(
-        split,
-        dtype="Float64"
-    )
-
     
     
 
@@ -509,6 +463,49 @@ def determine_first_offer(df: pd.DataFrame) -> pd.Series:
     # 2) re‐order to match exactly df's index ordering
     return labels.loc[df.index]
 
+def last_offer_time(df: pd.DataFrame) -> pd.Series:
+    """
+    For each row, find the last non-null value among columns
+    offer_time_1, offer_time_2, ..., offer_time_n. Ignores any
+    similarly-named columns that don't end in a number.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing your offer_time_1, offer_time_2, … columns.
+
+    Returns
+    -------
+    pd.Series
+        The last non-null offer time per row (or NaN if none exists).
+    """
+    # 1) Compile regex to match only suffixes that are digits
+    pattern = re.compile(r'^offer_time_(\d+)$')
+
+    # 2) Filter & sort by the numeric suffix
+    offer_cols = sorted(
+        (col for col in df.columns if pattern.match(col)),
+        key=lambda col: int(pattern.match(col).group(1))
+    )
+
+    # 3) Forward-fill across each row, then take the rightmost column
+    filled = df[offer_cols].ffill(axis=1)
+    return filled.iloc[:, -1]
+
+
+
+def obtain_last_offer(df: pd.DataFrame) -> pd.Series:
+    # 1. Grab and sort all offer columns by their numeric suffix
+    offer_cols = sorted(
+        df.filter(regex=r"^offer_\d+$").columns,
+        key=lambda c: int(c.split("_", 1)[1])
+    )
+    offers = df[offer_cols]
+    # 2. Reverse the column order so the "last" becomes first,
+    #    then forward-fill across columns and take the first column.
+    return offers.iloc[:, ::-1] \
+                 .bfill(axis=1) \
+                 .iloc[:, 0]
 
 
 def add_row_with_buyer_valuation(df: pd.DataFrame) -> pd.Series:
@@ -521,8 +518,7 @@ def add_row_with_buyer_valuation(df: pd.DataFrame) -> pd.Series:
 
 def filter_out_mistake_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Filters out all rows for any (round, group_id_in_round) where
-    one of the trading partners has payoffs < -15. Note that this only approximates our pre-specified criterion, but this should be fine
+    Filters out all rows for any (round, group_id_in_round) where the payoff is larger than termination
     """
     # keep only those groups whose minimum gain is >= -15
     cleaned = (
@@ -566,7 +562,7 @@ def add_time_row_columns(raw_df: pd.DataFrame,
     # Add each time row column by mapping from round 33 values
     for i in range(1, 7):
         col = f"{prefix}_{i}"
-        out[col] = out["participant_id"].map(time_row_map[col]).astype('Float64')
+        out[col] = out["participant_id_in_session"].map(time_row_map[col]).astype('Float64')
     
     return out
 
@@ -657,7 +653,7 @@ def map_round_variable(raw_df: pd.DataFrame,
     )
     
     # Map to all rounds and convert to specified dtype
-    return df_clean["participant_id"].map(var_map).astype(dtype)
+    return df_clean["participant_id_in_session"].map(var_map).astype(dtype)
 
 
 def determine_treatment_category(information_asymmetry: pd.Series,
@@ -684,36 +680,18 @@ def add_acceptance_time_sec(df: pd.DataFrame) -> pd.DataFrame:
     Note: We had an error in how we computed the acceptance time in the first two experiments.
     This is why we need this special calculation for these two sessions.
 
-    For session_id in SPECIAL_SESSIONS:
-        acceptance_time_sec = acceptance_time_raw
-                              + (bargain_start_time_unix / 1000)
-                              -  bargain_start_time_unix
-    Else:
-        acceptance_time_sec = acceptance_time_raw
-
-    Additionally, if acceptance_time_raw < 100, use:
-        acceptance_time_sec = df["cumulated_TA_costs"] / 0.05
+    We recover the acceptance time from the transaction costs which are 5 cents per second.
     """
     special_sessions_mask = df["session_id"].isin({"o1rrqa15", "1a8klj6g"})
-    low_acceptance_time_mask = df["acceptance_time_raw"].notna() & (df["acceptance_time_raw"] < 100)
+
 
     df["acceptance_time_sec"] = np.where(
         special_sessions_mask,
-        df["acceptance_time_raw"]
-        + (df["bargain_start_time_unix"] / 1000.0)
-        - df["bargain_start_time_unix"],
-        df["acceptance_time_raw"]
-    )
-
-    df["acceptance_time_sec"] = np.where(
-        low_acceptance_time_mask,
         df["cumulated_TA_costs"] / 0.05,
-        df["acceptance_time_sec"]
+        df["acceptance_time_raw"]
     )
 
     return df
-
-
 
 
 def add_termination_time_sec(df: pd.DataFrame) -> pd.DataFrame:
@@ -722,30 +700,17 @@ def add_termination_time_sec(df: pd.DataFrame) -> pd.DataFrame:
 
     Note: We had an error in how we computed the termination time in the first two experiments.
     This is why we need this special calculation for these two sessions.
+    We recover the termination time from the transaction costs which are 5 cents per second.
 
-
-    Rule:
-      if  session_id ∈ SPECIAL_SESSIONS
-          AND termination_time_raw >= 500
-      then
-          termination_time_sec = termination_time_raw
-                                 + (bargain_start_time_unix / 1000)
-                                 -  bargain_start_time_unix
-      else
-          termination_time_sec = termination_time_raw
     """
     
     mask = (
         df["session_id"].isin({"o1rrqa15", "1a8klj6g"})
-        & df["termination_time_raw"].notna()
-        & (df["termination_time_raw"] >= 500)
     )
 
     df["termination_time_sec"] = np.where(
         mask,
-        df["termination_time_raw"]
-        + (df["bargain_start_time_unix"] / 1000.0)
-        -  df["bargain_start_time_unix"],
+        df["cumulated_TA_costs"] / 0.05,
         df["termination_time_raw"]
     )
 
@@ -769,7 +734,7 @@ def calculate_efficiency(df: pd.DataFrame) -> pd.Series:
         (df['bargaining_outcome'] == 'acceptance')
     )
     
-    # Case 2: non‐positive gains and a “no‐deal” termination
+    # Case 2: non‐positive gains and a "no‐deal" termination
     cond2 = (
         (df['gains_from_trade'] <= 0) &
         (df['bargaining_outcome'].isin(['Player', 'Random_Termination']))
@@ -831,18 +796,18 @@ def calculate_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
         Split of gains from trade, indexed same as input.
     """
 
-    # boolean masks
-    is_seller = df['participant_role'] == 'Seller'
-    is_buyer  = df['participant_role'] == 'Buyer'
+    # 1. Numerator: seller vs. buyer
+    num = (df['deal_price'] - df['valuation']).where(
+        df['participant_role'] == 'Seller',
+        df['valuation'] - df['deal_price']
+    )
 
-    # compute numerators
-    num = pd.Series(index=df.index, dtype=float)
-    num[is_seller] = df.loc[is_seller, 'deal_price'] - df.loc[is_seller, 'valuation']
-    num[is_buyer]  = df.loc[is_buyer,  'valuation']  - df.loc[is_buyer,  'deal_price']
+    # 2) Prepare output as a nullable Float64 Series full of NA
+    split = pd.Series(pd.NA, index=df.index, dtype="Float64")
 
-    # split = numerator / total gains
-    split = num / df['gains_from_trade']
-
+    # 3) Only divide where gains_from_trade ≠ 0
+    good = df['gains_from_trade'] != 0
+    split.loc[good] = num.loc[good] / df.loc[good, 'gains_from_trade']
     return split
 
 
@@ -874,3 +839,172 @@ def calculate_first_offer_split(df: pd.DataFrame) -> pd.Series:
     split.replace([np.inf, -np.inf], pd.NA, inplace=True)
 
     return split
+
+def check_time_data_consistency(df: pd.DataFrame, tol: float = 3.0) -> None:
+    """
+    Raise ValueError if any row violates the three timing rules.
+
+    Hard-coded column names
+    -----------------------
+    - acceptance_time_sec
+    - bargaining_time_full_sec
+    - offer_time_1
+    - termination_time_sec
+    """
+
+    df_filter = df[df['time_inconsistency_dummy'] == 0]
+    # Rule masks
+    r1 = df_filter["acceptance_time_sec"] > df_filter["bargaining_time_full_sec"] + tol
+    r2 = df_filter["last_offer_time"] > df_filter["bargaining_time_full_sec"] + tol
+    r3 = df_filter["offer_time_1"] < -3
+
+    any_bad = r1 | r2 | r3
+    if any_bad.any():
+        bad_rows = df_filter.index[any_bad].tolist()
+        msg = [
+            "Consistency check failed on rows: " + ", ".join(map(str, bad_rows)),
+            "  • Rule 1: acceptance_time_sec > bargaining_time_full_sec + 3",
+        ]
+        raise ValueError("\n".join(msg))
+    
+
+
+def create_time_inconsistency_dummy(df: pd.DataFrame) -> pd.Series:
+    """
+    Create a 0/1 dummy indicating, for each row, whether its negotiation_id
+    is "time‐inconsistent." A negotiation is time‐inconsistent if any of its
+    participants ever have last_offer_time > bargaining_time_full_sec + 3.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Must contain the columns:
+          - 'participant_code'
+          - 'negotiation_id'
+          - 'last_offer_time'
+          - 'bargaining_time_full_sec'
+
+    Returns
+    -------
+    pd.Series
+        A 0/1 Series (indexed the same as df), where 1 means the row's
+        negotiation_id has at least one participant_code with
+        last_offer_time > bargaining_time_full_sec + 3.
+    """
+    # 1) Find all participant_codes who ever exceed the time threshold
+    mask = ((df['last_offer_time'] > df['bargaining_time_full_sec'] + 3) | (df["acceptance_time_sec"] > df["bargaining_time_full_sec"] + 3) | (df["offer_time_1"] < -3))
+    offenders = df.loc[mask, 'participant_code'].unique()
+
+    # 2) Find all negotiation_ids in which those participants appear
+    bad_negs = df.loc[df['participant_code'].isin(offenders), 'negotiation_id'].unique()
+
+    # 3) Mark any row whose negotiation_id is in that set
+    time_inconsistency_dummy = df['negotiation_id'].isin(bad_negs).astype(int)
+
+    # Print the number of 1's as a percentage of the whole dataset
+    percent_ones = (time_inconsistency_dummy.sum() / len(df)) * 100
+    print(f"Percentage of time-inconsistent negotiations: {percent_ones:.2f}%")
+
+    print(f"Offernders codes: {offenders}")
+
+    return time_inconsistency_dummy
+
+def check_participant_code_uniqueness(df: pd.DataFrame,
+                                      round_to_check: int = 23,
+                                      participant_col: str = 'participant_code',
+                                      round_col: str = 'round') -> None:
+    """
+    Verify that each participant_code appears at most once in the specified round.
+    Raises a ValueError listing any duplicates if the check fails.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to check. Must contain `participant_col` and `round_col`.
+    round_to_check : int
+        The round number to validate (default is 23).
+    participant_col : str
+        Name of the column holding participant codes.
+    round_col : str
+        Name of the column holding round identifiers.
+
+    Raises
+    ------
+    ValueError
+        If any participant_code appears more than once in the specified round.
+    """
+    # Subset to only the requested round
+    df_sub = df[df[round_col] == round_to_check]
+    
+    # Find duplicates within that round
+    dup_mask = df_sub.duplicated(subset=[participant_col], keep=False)
+    if dup_mask.any():
+        # Get the offending participant codes
+        dup_codes = (
+            df_sub.loc[dup_mask, participant_col]
+                  .unique()
+        )
+        codes_str = ", ".join(map(str, dup_codes))
+        raise ValueError(
+            f"Round {round_to_check} has duplicate participant_code(s): {codes_str}"
+        )
+    
+
+
+def add_group_id_in_session(
+    df_part: pd.DataFrame,
+    df_groups: pd.DataFrame,
+    participant_col: str = "participant_id_in_session",
+    lookup_id_col: str = "Participant_ID",
+    group_id_col: str = "Group_ID",
+    out_col: str = "group_id_in_session"
+) -> pd.DataFrame:
+    """
+    Take df_part with participant_col and df_groups with lookup_id_col & group_id_col,
+    and return df_part with an added column out_col containing the group ID (or NaN if no match).
+    """
+    # Merge on participant ID
+    merged = df_part.merge(
+        df_groups[[lookup_id_col, group_id_col]],
+        how="left",
+        left_on=participant_col,
+        right_on=lookup_id_col
+    )
+    # Rename the group column and drop the extra lookup column
+    merged = merged.rename(columns={group_id_col: out_col})
+    merged = merged.drop(columns=[lookup_id_col])
+    return merged
+
+
+    
+
+def calculate_payoff(df: pd.DataFrame) -> pd.Series:
+    """
+    Calculate the payoff for each participant.
+    If bargaining_outcome is acceptance, calculate based on deal price.
+    If bargaining_outcome is not acceptance, payoff is just -cumulated_TA_costs.
+    """
+    p = df["participant_role"].eq("Seller")
+    a = df["bargaining_outcome"].eq("acceptance")
+    base = df["cumulated_TA_costs"]
+    deal, val = df["deal_price"], df["valuation"]
+
+    arr = np.where(
+        a,
+        np.where(p, deal - val - base, val - deal - base),
+        -base
+    )
+    return pd.Series(arr, index=df.index, name="payoff")
+    
+
+def correct_deal_price(df: pd.DataFrame) -> pd.Series:
+    """
+    Correct the deal price. In the first 4 sessions, we used a regex to save the deal price in the database; 
+    it incorrectly converted very long accepted offers (like 19.00000000001) into 1900. We fix this by filtering for these offers
+    and dividing by 10. 
+    """
+    mask = df["deal_price"] > 60
+    df.loc[mask, "deal_price"] = df.loc[mask, "deal_price"] / 10
+    percent_replaced = (mask.sum() / len(df)) * 100
+    print(f"Replaced {percent_replaced:.2f}% of deal prices.")
+    return df["deal_price"]

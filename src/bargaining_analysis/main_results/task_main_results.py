@@ -1,19 +1,25 @@
-from src.bargaining_analysis.main_results.main_results import plot_T4_buyer_payoff_vs_valuation, regression_table_symmetric_treatment, regression_table_one_sided_treatment, regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators
-from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, COLOR_SCHEME, OVERLEAF_TABLES, VARLABELS_REGRESSION
+from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_vs_valuation, regression_table_symmetric_treatment,regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators, plot_buyer_first_offer_vs_valuation, plot_two_sided_signaling, plot_split_gains_by_treatment_role_grouped_t34, plot_buyer_payoff_vs_gains_from_trade_t12, plot_offer_time_vs_valuation_demeaned_t34_buyer, plot_offer_time_vs_valuation_demeaned_t12
+
+from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates
+
+from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers
+
+from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, COLOR_SCHEME, OVERLEAF_TABLES, VARLABELS_REGRESSION, LEGEND_ELEMENTS_OUTCOME
 from src.bargaining_analysis.main_results.descriptive_actions_table import calculate_bargaining_actions_values
 from src.bargaining_analysis.helper import inject_values
 import pandas as pd
+import matplotlib.pyplot as plt
+from pytask import task
 
 
-
-
-def task_write_regression_table_master_negotiators(
+def task_regression_gains_from_trade_number_offers(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
         varlabels_regression = VARLABELS_REGRESSION,
-        out_path = OVERLEAF_TABLES / "regression_table_master_negotiators.tex"
+        out_path = OVERLEAF_TABLES / "gains_from_trade_number_offers.tex"
 ):
     df = pd.read_csv(depends_on)
-    regression_table_master_negotiators(df, out_path, varlabels_regression)
+    model_gains_from_trade_number_offers(df, varlabels_regression, out_path)
+
 
 def task_write_regression_table_all_treatments(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -23,16 +29,24 @@ def task_write_regression_table_all_treatments(
     df = pd.read_csv(depends_on)
     regression_table_all_treatments(df, out_path, varlabels_regression)
 
+    
 
-def task_plot_T4_buyer_payoff_vs_valuation(
+def task_make_plotgrid_buyer_payoff_vs_valuation(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
-        produces = OVERLEAF_FIGURES / "T4_buyer_payoff_vs_valuation.pdf"
+        produces = [OVERLEAF_FIGURES / "buyer_payoff_vs_valuation_grid_T12.pdf", OVERLEAF_FIGURES / "buyer_payoff_vs_valuation_grid_T3.pdf", OVERLEAF_FIGURES / "buyer_payoff_vs_valuation_grid_T4.pdf"]
 ):
     df = pd.read_csv(depends_on)
-    df_t4 = df[df["treatment"] == "T4"]
-    plot = plot_T4_buyer_payoff_vs_valuation(df_t4, COLOR_SCHEME)
-    plot.savefig(produces)
-    
+
+
+
+    plot_t12 = plot_buyer_payoff_vs_valuation(df[df["treatment"].isin(["T1", "T2"])], COLOR_SCHEME, treatment_t4="no")
+    plot_t3 = plot_buyer_payoff_vs_valuation(df[df["treatment"] == "T3"], COLOR_SCHEME, treatment_t4="no")
+    plot_t4 = plot_buyer_payoff_vs_valuation(df[df["treatment"] == "T4"], COLOR_SCHEME, treatment_t4="yes")
+
+    plot_t12.savefig(produces[0])
+    plot_t3.savefig(produces[1])
+    plot_t4.savefig(produces[2])
+
 
 
 def task_write_descriptive_actions_table(
@@ -57,11 +71,112 @@ def task_write_regression_table_symmetric_uncertainty(
 
 def task_write_regression_table_one_sided_treatment(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
-        out_path = OVERLEAF_TABLES / "regression_table_one_sided_treatment.tex"
+        varlabels_regression = VARLABELS_REGRESSION,
+        out_path = OVERLEAF_TABLES / "regression_table_asymmetric_treatment.tex"
 ):
     df = pd.read_csv(depends_on)
-    df_one_sided = df[(df["treatment"] == "T3") | (df["treatment"] == "T4")]
-    regression_table_one_sided_treatment(df_one_sided, out_path)
+    regression_table_asymmetric_treatment(df, out_path, varlabels_regression)
+
+
+def task_plot_buyer_first_offer_vs_valuation(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "buyer_first_offer_vs_valuation_asymmetric.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_buyer_first_offer_vs_valuation(df)
+    plot.savefig(produces)
+
+
+def task_plot_two_sided_signaling(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "two_sided_signaling.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_two_sided_signaling(df)
+    plot.savefig(produces)
+
+def task_plot_split_gains_by_treatment_role_grouped_t34(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "split_gains_by_treatment_role_grouped_t34.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_split_gains_by_treatment_role_grouped_t34(df, COLOR_SCHEME)
+    plot.savefig(produces)
+
+def task_plot_buyer_payoff_vs_gains_from_trade_t12(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "buyer_payoff_vs_gains_from_trade_t12.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_buyer_payoff_vs_gains_from_trade_t12(df, COLOR_SCHEME, LEGEND_ELEMENTS_OUTCOME)
+    plot.savefig(produces)
+
+
+def task_plot_offer_time_vs_valuation_demeaned_t34_buyer(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "offer_time_vs_valuation_demeaned_t34_buyer.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_offer_time_vs_valuation_demeaned_t34_buyer(df, COLOR_SCHEME)
+    plot.savefig(produces)
+
+
+def task_plot_offer_time_vs_valuation_demeaned_t12(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "offer_time_vs_valuation_demeaned_t12.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_offer_time_vs_valuation_demeaned_t12(df, COLOR_SCHEME)
+    plot.savefig(produces)
+
+def task_plot_boxplots_buyer_split_gains_from_trade(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "boxplots_buyer_split_gains_from_trade_rounds.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_boxplots_buyer_split_gains_from_trade(df)
+    plot.savefig(produces)
+
+def task_plot_boxplots_buyer_number_of_offers(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "boxplots_buyer_number_of_offers_rounds.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_boxplots_buyer_number_of_offers(df)
+    plot.savefig(produces)
+
+def task_plot_compare_seller_split_gains_from_trade_by_treatment(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "compare_seller_split_gains_from_trade_by_treatment.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = compare_seller_split_gains_from_trade_by_treatment(df)
+    plot.savefig(produces)
+
+
+for treatments in [
+    ["T1", "T2"],
+    ["T3", "T4"]
+    ]:
+
+    @task
+    def task_plot_gains_from_trade_number_offers(
+            depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+            treatments = treatments,
+            produces = OVERLEAF_FIGURES / f"gains_from_trade_number_offers_{treatments}.pdf"
+    ):
+        df = pd.read_csv(depends_on)
+        plot = plot_gains_from_trade_number_offers(df, treatments=treatments)
+        plot.savefig(produces)
+
+def task_plot_acceptance_rates(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "acceptance_rates_plot.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_acceptance_rates(df)
+    plot.savefig(produces)
+
 
 
 # def task_generate_first_mover_effect_table(

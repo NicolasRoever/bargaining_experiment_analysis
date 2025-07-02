@@ -51,11 +51,13 @@ def inject_values(tex_path: Path, **variables):
 def set_plot_theme():
     # base seaborn theme & palette
     sns.set_theme(
-        style="white",           # consistent with file_context_0
-        palette="deep",          # or your own list of colors
+        style="white",           # consistent with file_context_0        # or your own list of colors
         font="serif",            # consistent with file_context_0
         font_scale=1.4           # Increased font scale for larger text
     )
+
+    palette = ["#3c5488", "#e64b35", "#4dbbd5", "#00a087", "#f39b7f"]
+    sns.set_palette(palette = palette, n_colors=5)
 
     # tweak matplotlib rcParams you care about
     plt.rcParams.update({

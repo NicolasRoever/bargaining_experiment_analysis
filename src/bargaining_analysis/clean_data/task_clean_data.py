@@ -1,4 +1,4 @@
-from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA
+from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA, create_time_inconsistency_dummy, check_time_data_consistency, add_group_id_in_session
 from src.bargaining_analysis.helper import set_plot_theme       
 from src.bargaining_analysis.config import SRC, BLD
 import os
@@ -51,12 +51,13 @@ create_merged_data_dependencies = [
     BLD / "data" / "asymmetric_TA.pkl",
     BLD / "data" / "asymmetric_no_TA.pkl", 
     BLD / "data" / "symmetric_TA.pkl", 
-    BLD / "data" / "symmetric_no_TA.pkl"
+    BLD / "data" / "symmetric_no_TA.pkl", 
 ]
 
 
 def task_create_merged_data(
         depends_on = create_merged_data_dependencies,
+        groupings_df_path = SRC / "data" / "environment_data" / "participant_data_4_groups_one-sided.pkl",
         produces = BLD / "data" / "merged_data_full.csv"
 ):
 
@@ -64,6 +65,17 @@ def task_create_merged_data(
     merged_df = pd.concat(dfs, ignore_index=True)
 
     merged_df['negotiation_id'] = merged_df.groupby(['session_id', 'round', 'group_id_in_round']).ngroup()
+
+
+    #Error Handling for Server Latency Cases
+    merged_df["time_inconsistency_dummy"] = create_time_inconsistency_dummy(merged_df)
+    check_time_data_consistency(merged_df)
+
+    #Add group_id_in_session
+    groupings_df = pd.read_pickle(groupings_df_path)
+    merged_df = add_group_id_in_session(merged_df, groupings_df)
+    merged_df["group_id"] = merged_df.groupby(['session_id', 'group_id_in_session']).ngroup()
+
     merged_df.to_csv(produces, index=False)
 
 

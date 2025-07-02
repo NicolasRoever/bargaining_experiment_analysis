@@ -3,6 +3,7 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.lines as mlines
 
 SRC = Path(__file__).parent.resolve()
 ROOT = SRC.joinpath("..", "..").resolve()
@@ -25,7 +26,12 @@ plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 sns.set_style("white")
 
-
+#Legend Elements
+LEGEND_ELEMENTS_OUTCOME = [
+    mlines.Line2D([], [], color=COLOR_SCHEME[0], marker='o', linestyle='None', label='Player Termination'),
+    mlines.Line2D([], [], color=COLOR_SCHEME[1], marker='o', linestyle='None', label='Computer Termination'),
+    mlines.Line2D([], [], color=COLOR_SCHEME[2], marker='o', linestyle='None', label='Acceptance')
+]
 #Regression Stuff
 VARLABELS_REGRESSION = {'const':'Constant','first_offer':'First Offer', 'split_gains_from_trade':'Split Gains from Trade', 'efficiency':'Efficiency', 'agreement_dummy':'Dummy Agreement', 'C(participant_role)[T.Seller]':'Seller', 'C(TA_costs)[T.0.05]':'TA Costs $= 0.05$', 'gains_from_trade':'Gains from Trade', 
     "C(information_asymmetry)[one-sided]:small_gains_from_trade_indicator": "One-sided $\\times$ Small Gains from Trade",
@@ -45,7 +51,10 @@ VARLABELS_REGRESSION = {'const':'Constant','first_offer':'First Offer', 'split_g
     "C(information_asymmetry)[T.two-sided]:C(TA_costs)[0.05]": "Symmetric Uncertainty $\\times$ TA Costs $= 0.05$",
     "C(participant_role)[Buyer]:valuation": "Buyer $\\times$ Valuation",
     "C(participant_role)[Seller]:valuation": "Seller $\\times$ Valuation",
+    "C(participant_role)[T.Seller]:C(TA_costs)[0.0]": "Seller $\\times$ TA Costs $= 0.0$",
+    "C(participant_role)[T.Seller]:C(TA_costs)[0.05]": "Seller $\\times$ TA Costs $= 0.05$",
     "Intercept": "Constant",
+    "small_gains_from_trade_indicator" : "Gains from Trade $\\leq 10",
     }
 
 

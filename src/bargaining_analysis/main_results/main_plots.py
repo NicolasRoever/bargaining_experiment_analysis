@@ -1,0 +1,229 @@
+from src.bargaining_analysis.helper import set_plot_theme, finalize_plot
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.stats import ttest_ind
+from pydantic import validate_call
+import numpy as np
+
+def plot_boxplots_buyer_split_gains_from_trade(df: pd.DataFrame):
+
+    set_plot_theme()
+
+    # 1. Filter buyers in T1–T4
+    df_plot = df[
+        df['participant_role'].eq('Buyer') &
+        df['treatment'].isin(['T1','T2','T3','T4'])
+    ].copy()
+
+    # 2. Make T1+T2 vs T3+T4 groups
+    df_plot['group'] = df_plot['treatment'].map({
+        'T1':'T1 and T2', 'T2':'T1 and T2',
+        'T3':'T3 and T4', 'T4':'T3 and T4'
+    })
+
+    # 3. Shift your round numbers so the min becomes 1
+    min_round = df_plot['round'].min()          # e.g. 4
+    df_plot['round_num'] = df_plot['round'] - min_round + 1
+    n_rounds = df_plot['round_num'].max()       # should be 30 if rounds ran 4–33
+
+    # 4. Draw the side-by-side boxplots
+    fig, ax = plt.subplots(figsize=(14,7))
+    ax = sns.boxplot(
+        x='round_num',
+        y='split_gains_from_trade',
+        hue='group',
+        data=df_plot,
+        order=range(1, n_rounds+1),
+        palette={'T1 and T2':'C0','T3 and T4':'C1'},
+        dodge=True
+    )
+    ax.axhline(0.5, linestyle='--', color='gray', linewidth=1)
+
+    # 5. Force the x-ticks to 1…n_rounds
+    ax.set_xlabel('Round', fontsize=12)
+    ax.set_ylabel('Split Gains From Trade', fontsize=12)
+    ax.set_ylim(-0.5, 1.5)
+    ax.set_xticks(range(1, n_rounds+1))
+    ax.set_xticklabels(range(1, n_rounds+1), rotation=45)
+    ax.legend(title='Treatment Group')
+    
+    finalize_plot(ax)
+    
+    return fig
+
+def plot_boxplots_buyer_number_of_offers(df_plot: pd.DataFrame):
+
+    set_plot_theme()
+
+
+    # 2. Make T1+T2 vs T3+T4 groups
+    df_plot['group'] = df_plot['treatment'].map({
+        'T1':'T1 and T2', 'T2':'T1 and T2',
+        'T3':'T3 and T4', 'T4':'T3 and T4'
+    })
+
+    # 3. Shift your round numbers so the min becomes 1
+    min_round = df_plot['round'].min()          # e.g. 4
+    df_plot['round_num'] = df_plot['round'] - min_round + 1
+    n_rounds = df_plot['round_num'].max()       # should be 30 if rounds ran 4–33
+
+    # 4. Draw the side-by-side boxplots
+    fig, ax = plt.subplots(figsize=(14,7))
+    ax = sns.boxplot(
+        x='round_num',
+        y='number_of_offers',
+        hue='group',
+        data=df_plot,
+        order=range(1, n_rounds+1),
+        palette={'T1 and T2':'C0','T3 and T4':'C1'},
+        dodge=True
+    )
+
+    # 5. Force the x-ticks to 1…n_rounds
+    ax.set_xlabel('Round', fontsize=12)
+    ax.set_ylabel('Split Gains From Trade', fontsize=12)
+    ax.set_ylim(0, 10)
+    ax.set_xticks(range(1, n_rounds+1))
+    ax.set_xticklabels(range(1, n_rounds+1), rotation=45)
+    leg = ax.legend(
+        title='Treatment Group',
+        frameon=True,     # turn on the frame
+        fancybox=False    # straight corners
+    )
+    leg.get_frame().set_facecolor('white')
+    leg.get_frame().set_edgecolor('black')
+    leg.get_frame().set_linewidth(1)
+
+    finalize_plot(ax)
+
+    return fig
+
+def compare_seller_split_gains_from_trade_by_treatment(df: pd.DataFrame):
+
+    set_plot_theme()
+
+    # 1. Filter for Sellers
+    df_seller = df[df['participant_role'] == 'Seller'].copy()
+
+    # 2. Create pooled treatment groups
+    df_seller['pooled_treatment'] = df_seller['treatment'].map({
+        'T1': 'T1 and T2', 'T2': 'T1 and T2',
+        'T3': 'T3 and T4', 'T4': 'T3 and T4'
+    })
+
+    # 3. Draw 2 boxplots (one per pooled treatment group)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.boxplot(
+        x='pooled_treatment',
+        y='split_gains_from_trade',
+        data=df_seller,
+        order=['T1 and T2', 'T3 and T4'],
+        palette='Set2'
+    )
+    plt.xlabel('Pooled Treatment', fontsize=12)
+    plt.ylabel('Split Gains From Trade', fontsize=12)
+    plt.title('Seller: Split Gains From Trade by Pooled Treatment', fontsize=14)
+    plt.ylim(-0.5, 1.5)
+
+    # 4. t-test between pooled treatment groups
+    g1 = df_seller.loc[df_seller['pooled_treatment'] == 'T1 and T2', 'split_gains_from_trade']
+    g2 = df_seller.loc[df_seller['pooled_treatment'] == 'T3 and T4', 'split_gains_from_trade']
+    tstat, pval = ttest_ind(g1, g2, equal_var=False, nan_policy='omit')
+
+    # Add p-value to the plot
+    plt.text(0.5, 1.4, f'p-value of mean difference: {pval:.3f}', ha='center', fontsize=12, color='black')
+
+    finalize_plot(ax)
+
+    return fig
+
+def plot_gains_from_trade_number_offers(df, treatments):
+    """
+    Scatterplot of Gains from Trade vs. Number of Offers colored by treatment,
+    with a single pooled regression line across all selected treatments.
+    """
+    # Filter for specified treatments
+    df_plot = df[df['treatment'].isin(treatments)]
+
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Scatter plot, colored by treatment
+    sns.scatterplot(
+        x='gains_from_trade',
+        y='number_of_offers',
+        data=df_plot,
+        alpha=0.7,
+        ax=ax
+    )
+
+    # Pooled regression line across all treatments
+    sns.regplot(
+        x='gains_from_trade',
+        y='number_of_offers',
+        data=df_plot,
+        scatter=False,
+        ax=ax,
+        line_kws={
+            'label': 'Pooled fit'
+        }
+    )
+
+    # Axis labels and legend
+    ax.set_xlabel('Gains from Trade (in Euros)')
+    ax.set_ylabel('Number of Offers')
+    plt.ylim(0, 15)
+    plt.tight_layout()
+
+    finalize_plot(ax)
+
+    return fig
+
+@validate_call
+def plot_acceptance_rates(df: pd.DataFrame):
+    """
+    Plot acceptance rates for each treatment condition, showing the fraction of
+    acceptance where gains from trade are non-negative.
+    """
+
+ # --- 1. Filter --------------------------------------------------------------
+    df_filtered = df[df['gains_from_trade'] >= 0].copy()
+
+    # --- 2. Human-readable treatment labels -------------------------------------
+    labels_map = {
+        'T1': 'No Cost,\nSymmetric Uncertainty',
+        'T2': 'Costly,\nSymmetric Uncertainty',
+        'T3': 'No Cost,\nBuyer-only Uncertainty',
+        'T4': 'Costly,\nBuyer-only Uncertainty'
+    }
+    df_filtered['treatment_label'] = df_filtered['treatment'].map(labels_map)
+
+    # --- 3. Acceptance rates and 95 % CIs ---------------------------------------
+    grouped = df_filtered.groupby('treatment_label')['bargaining_outcome']
+    p   = grouped.apply(lambda x: (x == 'acceptance').mean())   # proportion
+    n   = grouped.count()
+    se  = np.sqrt(p * (1 - p) / n)      # standard error
+    ci95 = 1.96 * se                    # 95 % half-width (Wald)
+
+    # --- 4. Plot ----------------------------------------------------------------
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    bars = ax.bar(p.index, p, yerr=ci95, capsize=5)
+
+    ax.set_ylabel('Fraction of Acceptance where  \n Gains from Trade $\geq$ 0')
+    ax.set_xticklabels(p.index, rotation=45, ha='right')
+
+    # --- Write the percentage inside each bar -----------------------------------
+    for rect, frac in zip(bars, p):
+        bar_mid_y = rect.get_height() / 2
+        ax.text(
+            rect.get_x() + rect.get_width() / 2,  # bar centre (x)
+            bar_mid_y,                            # halfway up the bar (y)
+            f'{frac*100:.1f} %',                  # e.g. “74.3 %”
+            ha='center', va='center',
+            color='white', fontweight='bold', fontsize=9
+        )
+
+    finalize_plot(ax)
+    return fig
