@@ -1,8 +1,10 @@
 from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_vs_valuation, regression_table_symmetric_treatment,regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators, plot_buyer_first_offer_vs_valuation, plot_two_sided_signaling, plot_split_gains_by_treatment_role_grouped_t34, plot_buyer_payoff_vs_gains_from_trade_t12, plot_offer_time_vs_valuation_demeaned_t34_buyer, plot_offer_time_vs_valuation_demeaned_t12
 
-from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates
+from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12
 
 from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers
+
+from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates
 
 from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, COLOR_SCHEME, OVERLEAF_TABLES, VARLABELS_REGRESSION, LEGEND_ELEMENTS_OUTCOME
 from src.bargaining_analysis.main_results.descriptive_actions_table import calculate_bargaining_actions_values
@@ -58,6 +60,14 @@ def task_write_descriptive_actions_table(
   
     descriptive_actions_values = calculate_bargaining_actions_values(df)
     inject_values(out_path, **descriptive_actions_values)
+
+def task_inject_values_acceptance_table(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        out_path = OVERLEAF_TABLES / "comparison_efficiency.tex"
+    ):
+    df = pd.read_csv(depends_on)
+    acceptance_rates = compute_acceptance_rates(df)
+    inject_values(out_path, **acceptance_rates)  
 
 
 def task_write_regression_table_symmetric_uncertainty(
@@ -176,6 +186,41 @@ def task_plot_acceptance_rates(
     df = pd.read_csv(depends_on)
     plot = plot_acceptance_rates(df)
     plot.savefig(produces)
+
+def task_plot_last_offer_time_vs_valuation_t34(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "last_offer_time_vs_valuation_t34.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_last_offer_time_vs_valuation_t34(df)
+    plot.savefig(produces)
+
+def task_plot_last_offer_time_vs_valuation_t12(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "last_offer_time_vs_valuation_t12.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_last_offer_time_vs_valuation_t12(df)
+    plot.savefig(produces)
+
+def task_plot_split_gains_from_trade_vs_valuation_t34(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "split_gains_from_trade_vs_valuation_t34.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_split_gains_from_trade_vs_valuation_t34(df)
+    plot.savefig(produces)
+
+def task_plot_split_gains_from_trade_vs_valuation_t12(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "split_gains_from_trade_vs_valuation_t12.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_split_gains_from_trade_vs_valuation_t12(df)
+    plot.savefig(produces)
+
+
+
 
 
 

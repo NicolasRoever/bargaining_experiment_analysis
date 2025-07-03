@@ -180,7 +180,6 @@ def plot_gains_from_trade_number_offers(df, treatments):
 
     return fig
 
-@validate_call
 def plot_acceptance_rates(df: pd.DataFrame):
     """
     Plot acceptance rates for each treatment condition, showing the fraction of
@@ -227,3 +226,165 @@ def plot_acceptance_rates(df: pd.DataFrame):
 
     finalize_plot(ax)
     return fig
+
+
+def plot_last_offer_time_vs_valuation_t34(df: pd.DataFrame):
+
+    df_signal = df[(np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
+    (df['participant_role'] == 'Buyer') &
+    (df['treatment'].isin(['T3', 'T4']))]
+
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # 1) scatter
+    sns.scatterplot(
+        x='valuation',
+        y='last_offer_time',
+        data=df_signal,
+        hue='treatment',
+        alpha=0.7
+    )
+
+    # 2) linear regression line (through all points)
+    sns.regplot(
+        x='valuation',
+        y='last_offer_time',
+        data=df_signal,
+        scatter=False,
+        label='Linear fit'
+    )
+
+    plt.xlabel('Valuation (Equals Gains from Trade)')
+    plt.ylabel('Time of Accepted Offer (Seconds)')
+    finalize_plot(ax)
+    
+    return fig
+
+def plot_last_offer_time_vs_valuation_t12(df: pd.DataFrame):
+
+    df_signal = df[(np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
+    (df['treatment'].isin(['T1', 'T2']))]
+
+    set_plot_theme()
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # scatter by role
+    sns.scatterplot(
+        x='valuation',
+        y='last_offer_time',
+        data=df_signal,
+        hue='participant_role',
+        alpha=0.7
+    )
+
+    # linear fit for Buyers
+    sns.regplot(
+        x='valuation',
+        y='last_offer_time',
+        data=df_signal[df_signal['participant_role'] == 'Buyer'],
+        scatter=False,
+        label='Buyer fit',
+    )
+
+    # linear fit for Sellers
+    sns.regplot(
+        x='valuation',
+        y='last_offer_time',
+        data=df_signal[df_signal['participant_role'] == 'Seller'],
+        scatter=False,
+        label='Seller fit',
+    )
+
+    plt.xlabel('Valuation')
+    plt.ylabel('Time of Accepted Offer (Seconds)')
+    plt.legend(title='Participant Role')
+    finalize_plot(ax)
+    
+    return fig
+
+
+def plot_split_gains_from_trade_vs_valuation_t34(df: pd.DataFrame):
+
+    set_plot_theme()
+
+    buyers_t3_t4 = df[
+    (df['participant_role'] == 'Buyer') &
+    (df['treatment'].isin(['T3', 'T4']))
+    ]
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # 1) scatter
+    sns.scatterplot(
+        x='valuation',
+        y='split_gains_from_trade',
+        data=buyers_t3_t4,
+        hue='treatment',
+        alpha=0.7
+    )
+
+    # 2) linear regression line (through all points)
+    sns.regplot(
+        x='valuation',
+        y='split_gains_from_trade',
+        data=buyers_t3_t4,
+        scatter=False,
+        label='Linear fit'
+    )
+
+    plt.xlabel('Buyer Valuation (Equals Gains from Trade)')
+    plt.ylabel('Split of Gains from Trade')
+    plt.legend(title='Treatment')
+    plt.ylim(-.5, 1.5)
+    finalize_plot(ax)
+    
+    return fig
+
+def plot_split_gains_from_trade_vs_valuation_t12(df: pd.DataFrame):
+
+    set_plot_theme()
+
+    all_t1_t2 = df[
+    (df['participant_role'] == 'Buyer') &
+    (df['treatment'].isin(['T1', 'T2']))
+    ]
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # 1) scatter
+    sns.scatterplot(
+        x='valuation',
+        y='split_gains_from_trade',
+        data=all_t1_t2,
+        hue='participant_role',
+        alpha=0.7
+    )
+
+    # linear fit for Buyers
+    sns.regplot(
+        x='valuation',
+        y='split_gains_from_trade',
+        data=all_t1_t2[all_t1_t2['participant_role'] == 'Buyer'],
+        scatter=False,
+        label='Buyer fit',
+    )
+
+    # linear fit for Sellers
+    sns.regplot(
+        x='valuation',
+        y='split_gains_from_trade',
+        data=all_t1_t2[all_t1_t2['participant_role'] == 'Seller'],
+        scatter=False,
+        label='Seller fit',
+    )
+
+    plt.xlabel('Buyer Valuation')
+    plt.ylabel('Split of Gains from Trade')
+    plt.legend(title='Treatment')
+    plt.ylim(-.5, 1.5)
+    finalize_plot(ax)
+    
+    return fig
+

@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 import re
+from pydantic import validate_call, ConfigDict
 
 
 #------------------------------------------------------
@@ -156,7 +157,7 @@ def clean_data(raw_data):
 
     #Valuation and Payoff
     df_clean["deal_price"] = df_long_wide["deal_price"]
-    df_clean["deal_price"] = correct_deal_price(df_clean)
+    #df_clean["deal_price"] = correct_deal_price(df_clean)
     df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
     df_clean['payoff'] = calculate_payoff(df_clean)
     df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
@@ -167,6 +168,8 @@ def clean_data(raw_data):
         df_clean['terminated_by_id_in_group'].isna(),
         0,
         1)
+    
+    df_clean['relative_valuation'] = calculate_relative_valuation(df_clean)
 
     # define your bins and labels
     bins = [-np.inf, 7.72, 21.40, np.inf]
@@ -1008,3 +1011,32 @@ def correct_deal_price(df: pd.DataFrame) -> pd.Series:
     percent_replaced = (mask.sum() / len(df)) * 100
     print(f"Replaced {percent_replaced:.2f}% of deal prices.")
     return df["deal_price"]
+
+@validate_call(
+    config=ConfigDict(arbitrary_types_allowed=True),
+)
+def calculate_relative_valuation(df: pd.DataFrame) -> pd.Series:
+    """
+    Calculate the relative valuation for each participant.
+    In t3, t4, it is valuation / 30. 
+    In t1, t2 it is (valuaion - 30) / 30 for buyers and (30 - valuation) / 30 for sellers.
+    """
+
+    val  = df['valuation']
+    trt  = df['treatment']
+    role = df['participant_role']
+
+    result = np.select(
+        [
+            trt.isin(['T3', 'T4']),
+            trt.isin(['T1', 'T2']) & (role == 'Buyer'),
+            trt.isin(['T1', 'T2']) & (role == 'Seller'),
+        ],
+        [
+            val / 30,
+            (val - 30) / 30,
+            (30 - val) / 30,
+        ],
+    )
+    return pd.Series(result, index=df.index)
+    

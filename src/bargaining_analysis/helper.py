@@ -76,4 +76,9 @@ def finalize_plot(ax=None):
     if ax is None:
         ax = plt.gca()
     sns.despine(ax=ax)
+    
+    legend = ax.get_legend()
+    if legend is not None:
+        legend.get_frame().set_facecolor("white")
+    
     ax.figure.tight_layout()
