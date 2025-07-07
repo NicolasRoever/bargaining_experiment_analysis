@@ -1,4 +1,4 @@
-from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA, create_time_inconsistency_dummy, check_time_data_consistency, add_group_id_in_session
+from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA, create_time_inconsistency_dummy, check_time_data_consistency, add_group_id_in_session, print_time_inconsistency_summary
 from src.bargaining_analysis.helper import set_plot_theme       
 from src.bargaining_analysis.config import SRC, BLD
 import os
@@ -16,17 +16,33 @@ def task_clean_data_symmetric_no_TA(
         produces = BLD / "data" / "symmetric_no_TA.pkl"
 ):
     df = pd.read_csv(depends_on)
+    print("Data Quality Check: for symmetric_no_TA \n --------------------------------")
     df = clean_data_symmetric_no_TA(df)
+    print_time_inconsistency_summary(df)
+  
     df.to_pickle(produces)
+
+
+task_clean_data_asymmetric_TA_dependencies = [
+SRC / "data" / "main" / "asymmetric_TA" / "asymmetric_TA_1.csv"
+]
 
 
 def task_clean_data_asymmetric_TA(
-        depends_on = SRC / "data" / "main" / "asymmetric_TA" / "asymmetric_TA_1.csv",
+        depends_on = task_clean_data_asymmetric_TA_dependencies,
         produces = BLD / "data" / "asymmetric_TA.pkl"
 ):
-    df = pd.read_csv(depends_on)
-    df = clean_data_asymmetric_TA(df)
-    df.to_pickle(produces)
+    
+    output = pd.DataFrame()
+    for depends_on in depends_on:
+        df = pd.read_csv(depends_on)
+        print(f"Data Quality Check: for {depends_on} \n --------------------------------")
+        clean_df = clean_data_asymmetric_TA(df)
+        print_time_inconsistency_summary(clean_df)
+        output = pd.concat([output, clean_df], ignore_index=True)
+
+
+    output.to_pickle(produces)
 
 
 def task_clean_data_symmetric_TA(
@@ -34,7 +50,9 @@ def task_clean_data_symmetric_TA(
         produces = BLD / "data" / "symmetric_TA.pkl"
 ):
     df = pd.read_csv(depends_on)
+    print("Data Quality Check: for symmetric_TA \n --------------------------------")
     df = clean_symmetric_TA_data(df)
+    print_time_inconsistency_summary(df)
     df.to_pickle(produces)
 
 
@@ -43,7 +61,9 @@ def task_clean_data_asymmetric_no_TA(
         produces = BLD / "data" / "asymmetric_no_TA.pkl"
 ):
     df = pd.read_csv(depends_on)
-    df = clean_data_asymmetric_no_TA(df)
+    print("Data Quality Check: for asymmetric_no_TA \n --------------------------------")
+    df = clean_data_asymmetric_no_TA(df) 
+    print_time_inconsistency_summary(df)
     df.to_pickle(produces)
 
 
@@ -67,7 +87,7 @@ def task_create_merged_data(
     merged_df['negotiation_id'] = merged_df.groupby(['session_id', 'round', 'group_id_in_round']).ngroup()
 
 
-    #Error Handling for Server Latency Cases
+    #Error Handling for TIme Inconsistencies
     merged_df["time_inconsistency_dummy"] = create_time_inconsistency_dummy(merged_df)
     check_time_data_consistency(merged_df)
 

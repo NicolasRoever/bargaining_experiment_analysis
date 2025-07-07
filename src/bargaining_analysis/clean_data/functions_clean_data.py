@@ -156,8 +156,8 @@ def clean_data(raw_data):
     )
 
     #Valuation and Payoff
-    df_clean["deal_price"] = df_long_wide["deal_price"]
-    #df_clean["deal_price"] = correct_deal_price(df_clean)
+    df_clean["deal_price_raw"] = df_long_wide["deal_price"]
+    df_clean["deal_price"] = correct_deal_price(df_clean)
     df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
     df_clean['payoff'] = calculate_payoff(df_clean)
     df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
@@ -908,7 +908,7 @@ def create_time_inconsistency_dummy(df: pd.DataFrame) -> pd.Series:
     percent_ones = (time_inconsistency_dummy.sum() / len(df)) * 100
     print(f"Percentage of time-inconsistent negotiations: {percent_ones:.2f}%")
 
-    print(f"Offernders codes: {offenders}")
+    print(f"Offenders codes: {offenders}")
 
     return time_inconsistency_dummy
 
@@ -1006,6 +1006,8 @@ def correct_deal_price(df: pd.DataFrame) -> pd.Series:
     it incorrectly converted very long accepted offers (like 19.00000000001) into 1900. We fix this by filtering for these offers
     and dividing by 10. 
     """
+
+    df["deal_price"] = df["deal_price_raw"].astype(float)
     mask = df["deal_price"] > 60
     df.loc[mask, "deal_price"] = df.loc[mask, "deal_price"] / 10
     percent_replaced = (mask.sum() / len(df)) * 100
@@ -1039,4 +1041,25 @@ def calculate_relative_valuation(df: pd.DataFrame) -> pd.Series:
         ],
     )
     return pd.Series(result, index=df.index)
+
     
+
+def print_time_inconsistency_summary(df: pd.DataFrame) -> None:
+    """
+    Print a summary of time inconsistency in the DataFrame.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing time inconsistency information.
+    """
+    
+    last_offer_offenders = (df['last_offer_time'] > df['bargaining_time_full_sec']).sum(skipna=True)
+    acceptance_time_offenders = (df["acceptance_time_sec"] > df["bargaining_time_full_sec"]).sum(skipna=True)
+    negative_offer_time_offenders = (df["offer_time_1"] < 0).sum(skipna=True)
+
+    print(f"Percent of offers last offer time > bargaining time: {last_offer_offenders / len(df) * 100:.2f}%")
+    print(f"Percent of offers acceptance time > bargaining time: {acceptance_time_offenders / len(df) * 100:.2f}%")
+    print(f"Percent of offers offer time 1 < 0: {negative_offer_time_offenders / len(df) * 100:.2f}%")
+
+
