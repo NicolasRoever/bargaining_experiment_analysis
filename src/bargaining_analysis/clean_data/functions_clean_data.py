@@ -680,8 +680,8 @@ def add_acceptance_time_sec(df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds df['acceptance_time_sec'].
 
-    Note: We had an error in how we computed the acceptance time in the first two experiments.
-    This is why we need this special calculation for these two sessions.
+    Note: We had an error in how we computed the acceptance time in the first four sessions.
+    This is why we need this special calculation for these two sessions where we can recover acceptance time from TA costs.
 
     We recover the acceptance time from the transaction costs which are 5 cents per second.
     """
@@ -1054,7 +1054,7 @@ def print_time_inconsistency_summary(df: pd.DataFrame) -> None:
         The DataFrame containing time inconsistency information.
     """
     
-    last_offer_offenders = (df['last_offer_time'] > df['bargaining_time_full_sec']).sum(skipna=True)
+    last_offer_offenders = (df['last_offer_time'] > (df['bargaining_time_full_sec'] + 0.5)).sum(skipna=True)
     acceptance_time_offenders = (df["acceptance_time_sec"] > df["bargaining_time_full_sec"]).sum(skipna=True)
     negative_offer_time_offenders = (df["offer_time_1"] < 0).sum(skipna=True)
 

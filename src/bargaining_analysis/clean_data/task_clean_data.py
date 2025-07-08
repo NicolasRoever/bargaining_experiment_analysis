@@ -16,7 +16,7 @@ def task_clean_data_symmetric_no_TA(
         produces = BLD / "data" / "symmetric_no_TA.pkl"
 ):
     df = pd.read_csv(depends_on)
-    print("Data Quality Check: for symmetric_no_TA \n --------------------------------")
+    print("\n Data Quality Check: for symmetric_no_TA \n --------------------------------")
     df = clean_data_symmetric_no_TA(df)
     print_time_inconsistency_summary(df)
   
@@ -24,8 +24,9 @@ def task_clean_data_symmetric_no_TA(
 
 
 task_clean_data_asymmetric_TA_dependencies = [
-SRC / "data" / "main" / "asymmetric_TA" / "asymmetric_TA_1.csv"
-]
+   SRC / "data" / "main" / "asymmetric_TA" / "asymmetric_TA_1.csv",
+    SRC / "data" / "main" / "asymmetric_TA" / "july_8.csv"
+    ]
 
 
 def task_clean_data_asymmetric_TA(
@@ -36,7 +37,7 @@ def task_clean_data_asymmetric_TA(
     output = pd.DataFrame()
     for depends_on in depends_on:
         df = pd.read_csv(depends_on)
-        print(f"Data Quality Check: for {depends_on} \n --------------------------------")
+        print(f"\n Data Quality Check: for {depends_on} \n --------------------------------")
         clean_df = clean_data_asymmetric_TA(df)
         print_time_inconsistency_summary(clean_df)
         output = pd.concat([output, clean_df], ignore_index=True)
@@ -50,7 +51,7 @@ def task_clean_data_symmetric_TA(
         produces = BLD / "data" / "symmetric_TA.pkl"
 ):
     df = pd.read_csv(depends_on)
-    print("Data Quality Check: for symmetric_TA \n --------------------------------")
+    print("\n Data Quality Check: for symmetric_TA \n --------------------------------")
     df = clean_symmetric_TA_data(df)
     print_time_inconsistency_summary(df)
     df.to_pickle(produces)
@@ -61,7 +62,7 @@ def task_clean_data_asymmetric_no_TA(
         produces = BLD / "data" / "asymmetric_no_TA.pkl"
 ):
     df = pd.read_csv(depends_on)
-    print("Data Quality Check: for asymmetric_no_TA \n --------------------------------")
+    print("\n Data Quality Check: for asymmetric_no_TA \n --------------------------------")
     df = clean_data_asymmetric_no_TA(df) 
     print_time_inconsistency_summary(df)
     df.to_pickle(produces)
