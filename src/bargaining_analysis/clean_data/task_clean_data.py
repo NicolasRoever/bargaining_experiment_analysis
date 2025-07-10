@@ -9,8 +9,6 @@ import pandas as pd
 
 set_plot_theme()
 
-
-
 def task_clean_data_symmetric_no_TA(
         depends_on = SRC / "data" / "main" / "symmetric_No_TA" / "june_17_data.csv",
         produces = BLD / "data" / "symmetric_no_TA.pkl"
@@ -46,26 +44,44 @@ def task_clean_data_asymmetric_TA(
     output.to_pickle(produces)
 
 
+
+task_clean_data_asymmetric_TA_dependencies = [
+    SRC / "data" / "main" / "symmetric_TA" / "data_june_13.csv", 
+    SRC / "data" / "main" / "symmetric_TA" / "july_9.csv"]
 def task_clean_data_symmetric_TA(
-        depends_on = SRC / "data" / "main" / "symmetric_TA" / "data_june_13.csv",
+        depends_on = task_clean_data_asymmetric_TA_dependencies,
         produces = BLD / "data" / "symmetric_TA.pkl"
 ):
-    df = pd.read_csv(depends_on)
-    print("\n Data Quality Check: for symmetric_TA \n --------------------------------")
-    df = clean_symmetric_TA_data(df)
-    print_time_inconsistency_summary(df)
-    df.to_pickle(produces)
+    
+    output = pd.DataFrame()
+    for depends_on in depends_on:
+        df = pd.read_csv(depends_on)
+        print(f"\n Data Quality Check: for {depends_on} \n --------------------------------")
+        df = clean_symmetric_TA_data(df)
+        print_time_inconsistency_summary(df)
+        output = pd.concat([output, df], ignore_index=True)
+        
+    output.to_pickle(produces)
 
+
+task_clean_data_asymmetric_no_TA_dependencies = [
+    SRC / "data" / "main" / "asymmetric_No_TA" / "june_16.csv",
+    SRC / "data" / "main" / "asymmetric_No_TA" / "july_10.csv"]
 
 def task_clean_data_asymmetric_no_TA(
-        depends_on = SRC / "data" / "main" / "asymmetric_No_TA" / "june_16.csv",
+        depends_on = task_clean_data_asymmetric_no_TA_dependencies,
         produces = BLD / "data" / "asymmetric_no_TA.pkl"
 ):
-    df = pd.read_csv(depends_on)
-    print("\n Data Quality Check: for asymmetric_no_TA \n --------------------------------")
-    df = clean_data_asymmetric_no_TA(df) 
-    print_time_inconsistency_summary(df)
-    df.to_pickle(produces)
+
+    output = pd.DataFrame()
+    for depends_on in depends_on:
+        df = pd.read_csv(depends_on)
+        print(f"\n Data Quality Check: for {depends_on} \n --------------------------------")
+        df = clean_data_asymmetric_no_TA(df) 
+        print_time_inconsistency_summary(df)
+        output = pd.concat([output, df], ignore_index=True)
+    
+    output.to_pickle(produces)
 
 
 create_merged_data_dependencies = [

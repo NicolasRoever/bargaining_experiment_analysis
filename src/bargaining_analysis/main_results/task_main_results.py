@@ -1,8 +1,8 @@
 from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_vs_valuation, regression_table_symmetric_treatment,regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators, plot_buyer_first_offer_vs_valuation, plot_two_sided_signaling, plot_split_gains_by_treatment_role_grouped_t34, plot_buyer_payoff_vs_gains_from_trade_t12, plot_offer_time_vs_valuation_demeaned_t34_buyer, plot_offer_time_vs_valuation_demeaned_t12
 
-from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12
+from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12, plot_mean_payoff_t3t4
 
-from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers
+from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers, run_signaling_regressions
 
 from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates
 
@@ -86,6 +86,13 @@ def task_write_regression_table_one_sided_treatment(
 ):
     df = pd.read_csv(depends_on)
     regression_table_asymmetric_treatment(df, out_path, varlabels_regression)
+
+def task_run_signaling_regressions(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        out_path = OVERLEAF_TABLES / "signaling_regressions_table.tex"
+):
+    df = pd.read_csv(depends_on)
+    run_signaling_regressions(df, out_path)
 
 
 def task_plot_buyer_first_offer_vs_valuation(
@@ -217,6 +224,14 @@ def task_plot_split_gains_from_trade_vs_valuation_t12(
 ):
     df = pd.read_csv(depends_on)
     plot = plot_split_gains_from_trade_vs_valuation_t12(df)
+    plot.savefig(produces)
+
+def task_plot_mean_payoff_t3t4(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "mean_payoff_t3t4.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_mean_payoff_t3t4(df)
     plot.savefig(produces)
 
 

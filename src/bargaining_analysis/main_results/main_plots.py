@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.stats import ttest_ind
 from pydantic import validate_call
 import numpy as np
+from itertools import product
+import statsmodels.formula.api as smf
 
 def plot_boxplots_buyer_split_gains_from_trade(df: pd.DataFrame):
 
@@ -230,9 +232,11 @@ def plot_acceptance_rates(df: pd.DataFrame):
 
 def plot_last_offer_time_vs_valuation_t34(df: pd.DataFrame):
 
-    df_signal = df[(np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
+    df_signal = df[(~np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
     (df['participant_role'] == 'Buyer') &
+    (df["bargaining_outcome"]== "acceptance") &
     (df['treatment'].isin(['T3', 'T4']))]
+
 
     set_plot_theme()
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -257,6 +261,7 @@ def plot_last_offer_time_vs_valuation_t34(df: pd.DataFrame):
 
     plt.xlabel('Valuation (Equals Gains from Trade)')
     plt.ylabel('Time of Accepted Offer (Seconds)')
+    plt.legend(title='Treatment')
     finalize_plot(ax)
     
     return fig
@@ -384,6 +389,72 @@ def plot_split_gains_from_trade_vs_valuation_t12(df: pd.DataFrame):
     plt.ylabel('Split of Gains from Trade')
     plt.legend(title='Treatment')
     plt.ylim(-.5, 1.5)
+    finalize_plot(ax)
+    
+    return fig
+
+
+def plot_mean_payoff_t3t4(df: pd.DataFrame):
+
+    df_t34 = df[(df['treatment'].isin(['T3', 'T4'])) & (df['bargaining_outcome'] == 'acceptance')].copy()
+    df_model_t34 = df_t34.dropna(subset=['payoff'])
+    # 1. Build grid of all (treatment × role) combos
+    roles = df_model_t34['participant_role'].unique()
+    treatments = ['T3', 'T4']
+    grid = pd.DataFrame(list(product(treatments, roles)),
+                        columns=['treatment', 'participant_role'])
+
+    # 2. Get model’s predicted means & CIs
+    model_t34 = smf.ols(formula='payoff ~ C(treatment):C(participant_role)', 
+                      data=df_model_t34).fit(
+    cov_type='cluster',
+     cov_kwds={'groups': df_model_t34['participant_code']}
+                      )
+    pred = model_t34.get_prediction(grid)
+    pred_df = pred.summary_frame(alpha=0.05)
+
+    grid = grid.assign(
+        mean  = pred_df['mean'],
+        lower = pred_df['mean_ci_lower'],
+        upper = pred_df['mean_ci_upper']
+    )
+
+    # 3. Pivot so treatments are the index, roles the columns
+    plot_df = grid.pivot(index='treatment',
+                        columns='participant_role',
+                        values=['mean', 'lower', 'upper'])
+
+    # 4. Extract arrays
+    means = plot_df['mean']      # DataFrame: index=treatments, cols=roles
+    lower = plot_df['lower']
+    upper = plot_df['upper']
+
+    n_treat = len(treatments)
+    n_roles = len(roles)
+    x = np.arange(n_treat)
+    width = 0.8 / n_roles  # total bar‐group width of 0.8
+
+    set_plot_theme()
+    # 5. Plot
+    fig, ax = plt.subplots()
+
+    for i, role in enumerate(roles):
+        y = means[role].values
+        err_low  = y - lower[role].values
+        err_high = upper[role].values - y
+        yerr = np.vstack([err_low, err_high])
+        
+        # center the group around each x[i]
+        offset = (i - (n_roles-1)/2) * width
+        ax.bar(x + offset, y, width,
+            yerr=yerr, capsize=5,
+            label=role)
+
+    # 6. Tweak axes/legend
+    ax.set_xticks(x)
+    ax.set_xticklabels(['T3: No Transaction Costs', 'T4: Transaction Costs'])
+    ax.set_ylabel('Average Payoff')
+    ax.legend(title='Role')
     finalize_plot(ax)
     
     return fig

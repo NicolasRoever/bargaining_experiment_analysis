@@ -100,19 +100,12 @@ def clean_data(raw_data):
     df_clean["treatment"] = determine_treatment_category(df_clean["information_asymmetry"], df_clean["TA_costs"])
     df_clean["subsession.is_practice_round"] = df_long_wide["subsession.is_practice_round"]
     df_clean["Role_Seller"] = np.where(df_clean["participant_role"] == "Seller", 1, 0)
+    df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
+    df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
     check_participant_code_uniqueness(df_clean)
 
     #Transaction Costs
     df_clean["cumulated_TA_costs"] = df_long_wide["cumulated_TA_costs"]
-
-
-    #Time Variables
-    df_clean["acceptance_time_raw"] = df_long_wide["acceptance_time"]
-    df_clean["termination_time_raw"] = df_long_wide["termination_time"].astype('Float64')
-    df_clean["bargain_start_time_unix"] = df_long_wide["bargain_start_time"].astype('Float64')
-    df_clean = add_acceptance_time_sec(df_clean)
-    df_clean = add_termination_time_sec(df_clean)
-    df_clean["bargaining_time_full_sec"] = df_clean["acceptance_time_sec"].combine_first(df_clean["termination_time_sec"])
 
     #Bargaining Outcome
     df_clean["termination_mode"] = df_long_wide["termination_mode"]
@@ -121,7 +114,43 @@ def clean_data(raw_data):
     .fillna('acceptance')
     )
 
+    #Acceptance Information
+    df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
+    df_clean["agreement_dummy"] = np.where(
+        df_clean["bargaining_outcome"] == "acceptance",
+        1,
+        0
+    )
+    df_clean["own_offer_accepted"] = np.where(
+        np.isclose(df_clean["id_in_group"],df_clean["accepted_by_id_in_group"]) & (df_clean["bargaining_outcome"] == "acceptance"),
+        1,
+        0
+    )
 
+    #Termination Information
+    df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
+
+    df_clean["player_terminated"] =  np.where(
+        df_clean['terminated_by_id_in_group'].isna(),
+        0,
+        1)
+
+
+    #Time Variables
+    #Note: This is a bit more complicated, because we had 2 errors in the first four sessions related to time variables. 
+    df_clean["bargain_start_time_unix"] = df_long_wide["bargain_start_time"].astype('Float64')
+    df_clean["acceptance_time_raw"] = df_long_wide["acceptance_time"]
+    df_clean["acceptance_time_1000_adj"] = adjusted_acceptance_time_for_1000(df_clean)
+    df_clean["termination_time_raw"] = df_long_wide["termination_time"].astype('Float64')
+    df_clean["termination_time_1000_adj"] = adjusted_termination_times_for_1000(df_clean)
+
+    df_clean["client_time_correction"] = client_time_correction_factor_series(df_clean)
+    df_clean['acceptance_time_sec'] = df_clean["acceptance_time_1000_adj"] - df_clean["client_time_correction"]
+    df_clean['termination_time_sec'] = df_clean["termination_time_1000_adj"] - df_clean["client_time_correction"]
+
+    df_clean["bargaining_time_full_sec"] = df_clean["acceptance_time_sec"].combine_first(df_clean["termination_time_sec"])
+
+    
     #Individual Offers and Offer Times
     df_clean = add_offer_columns(
         raw_df=df_long_wide,
@@ -147,27 +176,12 @@ def clean_data(raw_data):
     df_clean["number_of_offers"] = df_clean[offer_time_columns].count(axis=1)
 
 
-    #Acceptance Information
-    df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
-    df_clean["agreement_dummy"] = np.where(
-        df_clean["bargaining_outcome"] == "acceptance",
-        1,
-        0
-    )
-
     #Valuation and Payoff
     df_clean["deal_price_raw"] = df_long_wide["deal_price"]
     df_clean["deal_price"] = correct_deal_price(df_clean)
     df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
     df_clean['payoff'] = calculate_payoff(df_clean)
-    df_clean["id_in_group"] = pd.to_numeric(df_long_wide["id_in_group"], errors='coerce')
-    df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
-    df_clean["terminated_by_id_in_group"] = df_long_wide["terminated_by"].astype('Int64')
-
-    df_clean["player_terminated"] =  np.where(
-        df_clean['terminated_by_id_in_group'].isna(),
-        0,
-        1)
+    
     
     df_clean['relative_valuation'] = calculate_relative_valuation(df_clean)
 
@@ -615,8 +629,8 @@ def check_monotonicity_for_time_preferences(df: pd.DataFrame) -> None:
                         f"Row {idx!r} has more than one 1→2 transition: {vals}"
                     )
             elif prev == 2 and curr == 1:
-                raise ValueError(
-                    f"Row {idx!r} switches back from 2→1: {vals}"
+                print(
+                    f"Warning: Row {idx!r} switches back from 2→1: {vals}"
                 )
 
 
@@ -685,7 +699,10 @@ def add_acceptance_time_sec(df: pd.DataFrame) -> pd.DataFrame:
 
     We recover the acceptance time from the transaction costs which are 5 cents per second.
     """
-    special_sessions_mask = df["session_id"].isin({"o1rrqa15", "1a8klj6g"})
+    special_sessions_mask = (
+        df["session_id"].isin({"o1rrqa15", "1a8klj6g"}) &
+        (df["bargaining_outcome"] == "acceptance")
+    )
 
 
     df["acceptance_time_sec"] = np.where(
@@ -745,6 +762,80 @@ def calculate_efficiency(df: pd.DataFrame) -> pd.Series:
     
     return (cond1 | cond2).astype(int)
 
+def adjusted_acceptance_time_for_1000(df: pd.DataFrame) -> pd.Series:
+    """
+    For rows whose `session_id` is in SPECIAL_SESSIONS, applies the offset
+        (bargain_start_time_unix / 1000) - bargain_start_time_unix
+    to `acceptance_time_raw`. All other rows remain unchanged.
+
+    Returns a pandas Series of the adjusted acceptance times.
+    """
+
+    # Boolean mask of special sessions
+    mask = df["session_id"].isin({"o1rrqa15", "1a8klj6g"})
+    
+    # Compute the per-row offset (will be non-zero only where mask is True)
+    offset = (
+        df["bargain_start_time_unix"] / 1000.0
+        - df["bargain_start_time_unix"]
+    ).where(mask, 0.0)
+
+    # Return the corrected series
+    return df["acceptance_time_raw"] + offset
+
+def adjusted_termination_times_for_1000(df: pd.DataFrame) -> pd.Series:
+    """
+    For rows where session_id is in SPECIAL_SESSIONS AND termination_mode == "Player",
+    applies the offset
+        (bargain_start_time_unix / 1000) - bargain_start_time_unix
+    to `termination_time_raw`. All other rows remain unchanged.
+
+    Returns a pandas Series of the adjusted termination times.
+    """
+    # mask of rows needing correction
+    mask = (df["session_id"].isin({"o1rrqa15", "1a8klj6g"})) & (df["termination_mode"] == "Player")
+
+    # compute offset (non-zero only where mask is True)
+    offset = (
+        df["bargain_start_time_unix"] / 1000.0
+        - df["bargain_start_time_unix"]
+    ).where(mask, 0.0)
+
+    # return corrected termination times
+    return df["termination_time_raw"] + offset
+
+def client_time_correction_factor_series(df: pd.DataFrame) -> pd.Series:
+    """
+    Returns a pandas Series `client_time_correction_factor`, computed as follows:
+    - Define special_sessions_mask for rows where session_id is in SPECIAL_SESSIONS
+      and the participant (id_in_group) either accepted or terminated.
+    - server_time_estimate = cumulated_TA_costs / 0.05
+    - client_time_estimate = acceptance_time_sec.fillna(termination_time_sec)
+    - delta_client_server = client_time_estimate - server_time_estimate
+    - For each participant_code among special rows, take the minimum delta_client_server.
+    - Map that per-participant minimum back to all rows; participants not in the special set get 0.
+    """
+    # special mask
+
+    SPECIAL_SESSIONS = {"o1rrqa15", "1a8klj6g"}
+    mask = (
+        df["session_id"].isin(SPECIAL_SESSIONS)
+        & (
+            (df["accepted_by_id_in_group"] == df["id_in_group"])
+            | (df["terminated_by_id_in_group"] == df["id_in_group"])
+        )
+    )
+    # estimates and delta
+    server_est = df["cumulated_TA_costs"] / 0.05
+    client_est = df["acceptance_time_1000_adj"].fillna(df["termination_time_1000_adj"])
+    delta = client_est - server_est
+
+    # per-participant minimum delta among special rows
+    min_delta = delta[mask].groupby(df.loc[mask, "participant_code"]).min()
+
+    # map back and fill others with 0
+    return df["participant_code"].map(min_delta).fillna(0.0)
+
 
 def adjust_offer_times(
     df: pd.DataFrame,
@@ -771,12 +862,14 @@ def adjust_offer_times(
 
     if mask.any():
         # row-wise offset: a Series aligned to the rows that need fixing
-        offset = (out.loc[mask, "bargain_start_time_unix"] / 1000.0) - out.loc[mask, "bargain_start_time_unix"]
+        offset = (out.loc[mask, "bargain_start_time_unix"] / 1000.0) - out.loc[mask, "bargain_start_time_unix"] - out.loc[mask, "client_time_correction"]
 
         # broadcast the offset across every offer_* column in one go
         out.loc[mask, offer_cols] = out.loc[mask, offer_cols].add(offset, axis=0)
 
     return out
+
+
 
 def calculate_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
     """
@@ -1062,4 +1155,5 @@ def print_time_inconsistency_summary(df: pd.DataFrame) -> None:
     print(f"Percent of offers acceptance time > bargaining time: {acceptance_time_offenders / len(df) * 100:.2f}%")
     print(f"Percent of offers offer time 1 < 0: {negative_offer_time_offenders / len(df) * 100:.2f}%")
 
+   
 

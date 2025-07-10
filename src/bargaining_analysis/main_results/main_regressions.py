@@ -44,3 +44,29 @@ def model_gains_from_trade_number_offers(df: pd.DataFrame, varlabels_regression,
     )
     
 
+def run_signaling_regressions(df: pd.DataFrame, output_path: str):
+    """
+    Run signaling regressions for T3 and T4 treatments.
+    """
+    df_signal = df[(~np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
+                   (df['participant_role'] == 'Buyer') &
+                   (df["bargaining_outcome"] == "acceptance") &
+                   (df['treatment'].isin(['T3', 'T4']))]
+
+    model = smf.ols('last_offer_time ~ valuation', data=df_signal).fit(
+        cov_type='cluster', 
+        cov_kwds={'groups': df_signal['participant_code']}
+    )
+    
+    fix_pandas_append_error()
+    
+    pystout(models=[model],
+            endog_names=[r" \shortstack{ Last Offer Time (sec) }"],
+            file=output_path,
+            digits=2,
+            stars={.1:'*',.05:'**',.01:'***'},
+            varlabels=VARLABELS_REGRESSION,
+            exogvars=['valuation'],
+            modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
+           )
+

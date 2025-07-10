@@ -220,7 +220,7 @@ def plot_bargaining_rounds_by_id(df_clean, negotiation_ids, max_offers=10):
     """
     Plot specified negotiations by their negotiation_id, with micro-step arrows
     and a dotted line marking the end of bargaining.
-    
+
     Parameters:
     -----------
     df_clean : pandas.DataFrame
@@ -232,18 +232,23 @@ def plot_bargaining_rounds_by_id(df_clean, negotiation_ids, max_offers=10):
     max_offers : int
         Maximum number of offers recorded (default=10).
     """
+    # apply your custom theme (which sets the color cycle)
     set_plot_theme()
-    
+
+    # grab first two theme colors for Buyer/Seller
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    buyer_color, seller_color = colors[0], colors[1]
+
     # Filter to only the specified negotiation IDs
     df_sel = df_clean[df_clean['negotiation_id'].isin(negotiation_ids)]
-    
-    # Layout: try for square-ish grid
+
+    # Layout: square-ish grid
     n = len(negotiation_ids)
     rows = cols = int(math.ceil(math.sqrt(n)))
     fig, axes = plt.subplots(rows, cols,
                               figsize=(5 * cols, 4 * rows),
                               squeeze=False)
-    
+
     # Precompute global max for consistent y-axis
     all_off_vals = []
     for nid in negotiation_ids:
@@ -253,54 +258,64 @@ def plot_bargaining_rounds_by_id(df_clean, negotiation_ids, max_offers=10):
             if row.empty:
                 continue
             for i in range(1, max_offers + 1):
-                col = f'offer_{i}'
-                if col in row:
-                    val = row[col].iloc[0]
-                    if pd.notna(val):
-                        all_off_vals.append(val)
+                val = row.get(f'offer_{i}', pd.Series([np.nan])).iloc[0]
+                if pd.notna(val):
+                    all_off_vals.append(val)
     y_max = max(all_off_vals) * 1.1 if all_off_vals else 1
-    
+
+    def get_series(rec):
+        """Extract lists of (time, offer) for a single participant."""
+        times, offers = [], []
+        for i in range(1, max_offers + 1):
+            t = rec.get(f'offer_time_{i}', np.nan)
+            o = rec.get(f'offer_{i}',        np.nan)
+            if pd.notna(t) and pd.notna(o):
+                times.append(t)
+                offers.append(o)
+        return times, offers
+
     # Plot each negotiation by ID
     for idx, nid in enumerate(negotiation_ids):
-        r = idx // cols
-        c = idx % cols
+        r, c = divmod(idx, cols)
         ax = axes[r][c]
-        
-        part = df_sel[df_sel['negotiation_id'] == nid]
+
+        part  = df_sel[df_sel['negotiation_id'] == nid]
         buyer = part[part['participant_role'] == 'Buyer'].iloc[0]
-        seller = part[part['participant_role'] == 'Seller'].iloc[0]
-        
-        def get_series(p, role):
-            times, offers = [], []
-            for i in range(1, max_offers + 1):
-                t = p.get(f'offer_time_{i}', np.nan)
-                o = p.get(f'offer_{i}', np.nan)
-                if pd.notna(t) and pd.notna(o):
-                    times.append(t)
-                    offers.append(o)
-                    ax.scatter(t, o, alpha=0.7,
-                               label=role if i == 1 else "")
-            return times, offers
-        
-        bt, bo = get_series(buyer, 'Buyer')
-        st, so = get_series(seller,  'Seller')
-        
-        # connecting dashed lines
+        seller= part[part['participant_role'] == 'Seller'].iloc[0]
+
+        bt, bo = get_series(buyer)
+        st, so = get_series(seller)
+
+        # scatter once per role, using theme colors
         if bt:
-            ax.plot(bt, bo, '--',  alpha=0.3)
+            ax.scatter(bt, bo,
+                       color=buyer_color,
+                       alpha=0.7,
+                       label='Buyer')
+            ax.plot(bt, bo,
+                    '--',
+                    alpha=0.3,
+                    color=buyer_color)
         if st:
-            ax.plot(st, so, '--',  alpha=0.3)
-    
-        
+            ax.scatter(st, so,
+                       color=seller_color,
+                       alpha=0.7,
+                       label='Seller')
+            ax.plot(st, so,
+                    '--',
+                    alpha=0.3,
+                    color=seller_color)
+
         # end-line
-        term_times = [
-            t for t in (
-                buyer.get('termination_time_sec'),
-                seller.get('termination_time_sec')
-            ) if pd.notna(t)
-        ]
+        term_times = [t for t in (
+            buyer.get('termination_time_sec'),
+            seller.get('termination_time_sec')
+        ) if pd.notna(t)]
         t_end = max(term_times) if term_times else max(bt + st, default=0)
-        ax.axvline(t_end, linestyle=':', linewidth=1.5, color='black')
+        ax.axvline(t_end,
+                   linestyle=':',
+                   linewidth=1.5,
+                   color='black')
         ax.text(
             t_end,
             y_max * 0.95,
@@ -310,26 +325,27 @@ def plot_bargaining_rounds_by_id(df_clean, negotiation_ids, max_offers=10):
             fontsize=9,
             bbox=dict(boxstyle='round,pad=0.2', fc='white', alpha=0.6)
         )
+
+        # outcome & valuations
         outcome_map = {
             'acceptance': 'Acceptance',
             'player': 'Player Termination',
             'Random_Termination': 'Computer Termination'
         }
-
-        # valuations box
-        mapped_outcome = outcome_map.get(buyer["bargaining_outcome"], buyer["bargaining_outcome"])
-        # valuations box
+        mapped = outcome_map.get(buyer["bargaining_outcome"],
+                                 buyer["bargaining_outcome"])
         ax.text(
-            0.02, 0.98,
+            0.02,
+            0.98,
             (f'Buyer Valuation: {buyer["valuation"]}, '
              f'Seller Valuation: {seller["valuation"]}\n'
-             f'Outcome: {mapped_outcome}'),
+             f'Outcome: {mapped}'),
             transform=ax.transAxes,
             va='top',
             fontsize=8,
             bbox=dict(boxstyle='round', fc='white', alpha=0.8)
         )
-        
+
         ax.set_title(f'Negotiation {nid}')
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Offer')
@@ -337,13 +353,12 @@ def plot_bargaining_rounds_by_id(df_clean, negotiation_ids, max_offers=10):
         ax.grid(alpha=0.3)
         ax.legend(loc='lower right', fontsize=7)
         finalize_plot(ax=ax)
-    
+
     # Hide any unused subplots
     for idx in range(len(negotiation_ids), rows * cols):
-        r = idx // cols
-        c = idx % cols
+        r, c = divmod(idx, cols)
         axes[r][c].set_visible(False)
-    
+
     plt.tight_layout(rect=[0, 0, 1, 0.94])
     return fig
 

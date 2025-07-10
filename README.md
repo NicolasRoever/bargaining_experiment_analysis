@@ -25,8 +25,15 @@ cd ..
 
 ### Errata
 
-- In the first 4 sessions, we recorded offer times, acceptance times and player termination times on the client, leading to in some cases large measurement errors caused by differences in time between the client and the server.
+- In the first 4 sessions, we recorded offer times, acceptance times and player termination times on the client, leading to in some cases large measurement errors caused by differences in time between the client and the server. In cases with transaction costs, I fixed this, in the case of no transaction costs, we are screwed!
+
 - The accepted deal price is formatted by a sub function in the client in the first 4 sessions, leading to * 10 formatting error in few cases.  
+
+- We have an issue in a negotiation in T2, both have different bargaining_times for the same negotiation. My most likely explanation is internet issues for one person. Need to adress this later! (could just compute TA_costs for Random_Termination based on the termination times)
+
+### Explanation Cases lsat_offer_time > bargaining_time_full
+
+In some cases, the computer/other player is terminating as a player is submitting an offer. In this case, the offer time can be larger than the termination time, because of latency between the client and the server---the client has not been notified that the negotiation has been terminated. This happens in very few cases though, and the average difference between last offer time and termination time is 0.1 seconds; this shows that our application has very low latency. We do not consider this feature of our data to be a problem for data quality. 
 
 
 

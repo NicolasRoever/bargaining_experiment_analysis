@@ -55,6 +55,7 @@ VARLABELS_REGRESSION = {'const':'Constant','first_offer':'First Offer', 'split_g
     "C(participant_role)[T.Seller]:C(TA_costs)[0.05]": "Seller $\\times$ TA Costs $= 0.05$",
     "Intercept": "Constant",
     "small_gains_from_trade_indicator" : "Gains from Trade $\\leq 10",
+    "valuation":"Valuation"
     }
 
 
