@@ -69,4 +69,31 @@ def run_signaling_regressions(df: pd.DataFrame, output_path: str):
             exogvars=['valuation'],
             modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
            )
+    
+
+def run_information_efficiency_regression(df, varlabels_regression, output_path: str):
+    """
+    Run regression for information efficiency.
+    """
+
+    df_gft30 = df[(df["gains_from_trade"] >= 0) & (df["gains_from_trade"] <= 30) ].copy()
+    negotiation_data = df_gft30.drop_duplicates(subset='negotiation_id', keep='first')
+
+    model = smf.ols(formula='agreement_dummy ~ C(information_asymmetry)', data=negotiation_data).fit(cov_type='cluster',
+    cov_kwds={
+        'groups': negotiation_data['negotiation_id']
+    })
+    
+    fix_pandas_append_error()
+    
+    pystout(models=[model],
+            endog_names=[r" \shortstack{ Agreement Dummy }"],
+            file=output_path,
+            digits=2,
+            stars={.1:'*',.05:'**',.01:'***'},
+            varlabels=varlabels_regression,
+            exogvars=['C(information_asymmetry)[T.two-sided]'],
+            modstat={'nobs':'Obs','rsquared_adj':'Adj. R\sym{2}'}
+        
+)
 

@@ -17,6 +17,7 @@ cd ..
 
 ### Open To-Do
 
+- Fix how we correct times in the first 4 sessions; there are still issues.
 - Fix agreement rates filter (larger not larger equal 0. )
 - Fix number of offers function (wrong somehow : (.)
 - Check how you adjusted times more thoroughly!
@@ -36,7 +37,7 @@ cd ..
 
 
 ## On TA-Cost Differences
-- We currently have some observations in the first four data collections which have widely differing TA costs (hinting at some bigger problem with how we record time!); My current judgement is that we need to improve our time corrections for these observations, and then we should be fine (we are fine for outcomes of gains_from_trade anyway)
+- We currently have some observations in the first four data collections which have widely differing TA costs (hinting at the bigger problem with how we record time and try to fix it afterwards!); My current judgement is that we need to improve our time corrections for these observations, and then we should be fine (we are fine for outcomes of gains_from_trade anyway)
 
 ### Explanation Cases lsat_offer_time > bargaining_time_full
 

@@ -2,7 +2,8 @@ from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_
 
 from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12, plot_mean_payoff_t3t4
 
-from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers, run_signaling_regressions
+from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers, run_signaling_regressions, run_information_efficiency_regression
+
 
 from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates
 
@@ -235,6 +236,18 @@ def task_plot_mean_payoff_t3t4(
     plot.savefig(produces)
 
 
+
+#--------------------------------------------------------------
+# Regression Tables
+#--------------------------------------------------------------
+
+def task_run_information_efficiency_regression(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        varlabels_regression = VARLABELS_REGRESSION,
+        out_path = OVERLEAF_TABLES / "information_efficiency_regression.tex"
+):
+    df = pd.read_csv(depends_on)
+    run_information_efficiency_regression(df, varlabels_regression, out_path)
 
 
 
