@@ -1,4 +1,4 @@
-from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA, create_time_inconsistency_dummy, check_time_data_consistency, add_group_id_in_session, print_time_inconsistency_summary
+from src.bargaining_analysis.clean_data.functions_clean_data import clean_data_asymmetric_TA, clean_symmetric_TA_data, apply_preregistered_exclusion_criteria, clean_data_asymmetric_no_TA, clean_data_symmetric_no_TA, create_time_inconsistency_dummy, check_time_data_consistency, add_group_id_in_session, print_time_inconsistency_summary, apply_technical_exclusion_criteria
 from src.bargaining_analysis.helper import set_plot_theme       
 from src.bargaining_analysis.config import SRC, BLD
 import os
@@ -121,8 +121,12 @@ def task_apply_exclusion_criteria(
         produces = BLD / "data" / "merged_data_full_excluded.csv"
 ):
     df = pd.read_csv(depends_on)
-    df = apply_exclusion_criteria(df)
-    df.to_csv(produces, index=False)
+    df_1 = apply_preregistered_exclusion_criteria(df)
+    df_2 = apply_technical_exclusion_criteria(df_1)
+    print(f"\n Data Quality Check: for {depends_on} \n --------------------------------")
+    print_time_inconsistency_summary(df_2)
+
+    df_2.to_csv(produces, index=False)
 
 
 

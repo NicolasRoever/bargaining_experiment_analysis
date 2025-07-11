@@ -18,7 +18,8 @@ cd ..
 ### Open To-Do
 
 - Fix agreement rates filter (larger not larger equal 0. )
-
+- Fix number of offers function (wrong somehow : (.)
+- Check how you adjusted times more thoroughly!
 - Participant with label 72TouSYb still has weird first offer times. We need to fix this somehow!
 - dwjn1hbc has negative first offer time, should exclude him as well
 
@@ -30,6 +31,12 @@ cd ..
 - The accepted deal price is formatted by a sub function in the client in the first 4 sessions, leading to * 10 formatting error in few cases.  
 
 - We have an issue in a negotiation in T2, both have different bargaining_times for the same negotiation. My most likely explanation is internet issues for one person. Need to adress this later! (could just compute TA_costs for Random_Termination based on the termination times)
+
+- Check negotiation ID 454, somehow we have both acceptance and terminatnion (internet issues?)
+
+
+## On TA-Cost Differences
+- We currently have some observations in the first four data collections which have widely differing TA costs (hinting at some bigger problem with how we record time!); My current judgement is that we need to improve our time corrections for these observations, and then we should be fine (we are fine for outcomes of gains_from_trade anyway)
 
 ### Explanation Cases lsat_offer_time > bargaining_time_full
 

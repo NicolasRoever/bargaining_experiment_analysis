@@ -12,7 +12,7 @@ from pydantic import validate_call, ConfigDict
 #------------------------------------------------------
 
 
-def apply_exclusion_criteria(cleaned_data):
+def apply_preregistered_exclusion_criteria(cleaned_data):
     """
     Apply the pre-registered exclusion criteria to the cleaned data.
     """
@@ -92,7 +92,6 @@ def clean_data(raw_data):
     df_clean["participant_code"] = df_long_wide["participant.code"]
     df_clean['participant_role'] = df_long_wide['participant.role_in_game']
     df_clean["group_id_in_round"] = df_long_wide["id_in_subsession"]
-    df_clean["id_in_group"] = df_long_wide["id_in_group"]
     df_clean['round'] = df_long_wide['round']
     df_clean["session_id"] = df_long_wide["session.code"]
     df_clean["information_asymmetry"] = df_long_wide["session.config.information_asymmetry"]
@@ -149,6 +148,9 @@ def clean_data(raw_data):
     df_clean['termination_time_sec'] = df_clean["termination_time_1000_adj"] - df_clean["client_time_correction"]
 
     df_clean["bargaining_time_full_sec"] = df_clean["acceptance_time_sec"].combine_first(df_clean["termination_time_sec"])
+
+    if "current_second" in df_long_wide.columns:
+        df_clean["current_second"] = df_long_wide["current_second"].astype('Float64')
 
     
     #Individual Offers and Offer Times
@@ -1147,13 +1149,59 @@ def print_time_inconsistency_summary(df: pd.DataFrame) -> None:
         The DataFrame containing time inconsistency information.
     """
     
+    # existing per‐row checks
     last_offer_offenders = (df['last_offer_time'] > (df['bargaining_time_full_sec'] + 0.5)).sum(skipna=True)
     acceptance_time_offenders = (df["acceptance_time_sec"] > df["bargaining_time_full_sec"]).sum(skipna=True)
     negative_offer_time_offenders = (df["offer_time_1"] < 0).sum(skipna=True)
 
-    print(f"Percent of offers last offer time > bargaining time: {last_offer_offenders / len(df) * 100:.2f}%")
+    print(f"Percent of offers last offer time > bargaining time + 0.5: {last_offer_offenders / len(df) * 100:.2f}%")
     print(f"Percent of offers acceptance time > bargaining time: {acceptance_time_offenders / len(df) * 100:.2f}%")
     print(f"Percent of offers offer time 1 < 0: {negative_offer_time_offenders / len(df) * 100:.2f}%")
+
+    # new per‐negotiation check
+    # for each negotiation_id, compute the absolute difference between the two cumulated_TA_costs
+    diff_by_group = (
+        df
+        .groupby(['session_id', 'round', 'group_id_in_round'])['cumulated_TA_costs']
+        .agg(lambda x: x.max() - x.min())
+    )
+    # count how many negotiations exceed 0.1
+    large_diff_count = (diff_by_group > 0.16).sum()
+    total_negs = diff_by_group.size
+
+    print(f"Negotiations with cumulated_TA_costs difference > 0.16: "
+          f"{large_diff_count} out of {total_negs} "
+          f"({large_diff_count / total_negs * 100:.2f}%)")
+    
+
+def apply_technical_exclusion_criteria(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    - We exclude all negotiations where the current second of a player is different from the full bargaining time by more than 4 seconds. 
+    - We exclude all negotiations where there was both acceptance and termination
+    """
+    
+    df_out = df.copy()
+    
+    # Criterion 1: time discrepancy > 4s
+    time_mask = (df_out["current_second"] - df_out["bargaining_time_full_sec"]).abs() > 4
+    bad_time_ids = df_out.loc[time_mask, "negotiation_id"].unique()
+    print(f"Excluding {len(bad_time_ids)} negotiations for time discrepancy > 4s")
+    
+    # Criterion 2: both acceptance and termination present
+    both_mask = (
+        (df_out["acceptance_time_raw"].notna()
+        & df_out["termination_time_raw"].notna()) 
+
+    )
+    bad_both_ids = df_out.loc[both_mask, "negotiation_id"].unique()
+    print(f"Excluding {len(bad_both_ids)} negotiations for both acceptance and termination")
+    
+    # Combine all negotiation_ids to exclude
+    exclude_ids = set(bad_time_ids) | set(bad_both_ids)
+    
+    # Filter them out
+    filtered_df = df_out.loc[~df_out["negotiation_id"].isin(exclude_ids)].reset_index(drop=True)
+    return filtered_df
 
    
 
