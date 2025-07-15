@@ -70,7 +70,123 @@ such as Python, R, Julia, and Stata.
 
 > [!NOTE]
 > Although the underlying architecture supports all listed programming languages, the
-> current template implementation is limited to Python and R.
+
+## Dataset: `merged_data_full_excluded.csv`
+
+The cleaned dataset used throughout the analysis is stored in `bld/data/merged_data_full_excluded.csv` and assembled in
+`src/bargaining_analysis/clean_data/functions_clean_data.py`. The file contains one row per participant per bargaining round
+after applying the following exclusion steps:
+
+1. **Pre-registered exclusions** (`apply_preregistered_exclusion_criteria`)
+   - Remove observations flagged as `mistake` where `-cumulated_TA_costs` exceeds the observed `payoff`.
+   - Drop the first four rounds, which serve as practice rounds.
+2. **Technical exclusions** (`apply_technical_exclusion_criteria`)
+   - Exclude negotiations with a difference of more than four seconds between `current_second` and `bargaining_time_full_sec`.
+   - Exclude negotiations where both acceptance and termination times were recorded.
+
+### Variables
+
+Below is a short description of every column in
+`merged_data_full_excluded.csv`.
+Dynamic sequences of offers and times (`offer_1`, `offer_2`, … and
+`offer_time_1`, `offer_time_2`, …) follow the same naming logic and are
+abbreviated here.
+
+- `participant_id_in_session` – unique identifier for each participant
+  within a session.
+- `participant_label` – label chosen by the participant when logging in.
+- `participant_code` – random code assigned by oTree.
+- `participant_role` – either `Buyer` or `Seller`.
+- `group_id_in_round` – group identifier within a round.
+- `round` – bargaining round number.
+- `session_id` – identifier of the experimental session.
+- `information_asymmetry` – whether valuations were private
+  (`one-sided`) or symmetric (`two-sided`).
+- `TA_costs` – transaction costs per second.
+- `treatment` – shorthand combining information asymmetry and costs.
+- `subsession.is_practice_round` – indicator for practice rounds.
+- `Role_Seller` – equals `1` for sellers and `0` for buyers.
+- `id_in_group` – player's id within the group.
+- `cumulated_TA_costs` – total transaction costs incurred by the player.
+- `bargaining_outcome` – outcome of the negotiation (`acceptance` or
+  type of termination).
+- `termination_mode` – specific termination reason if no agreement was
+  reached.
+- `accepted_by_id_in_group` – id of the player whose offer was
+  accepted.
+- `agreement_dummy` – equals `1` if the bargaining ended in acceptance.
+- `own_offer_accepted` – equals `1` if the player's own offer was
+  accepted.
+- `terminated_by_id_in_group` – id of the player who terminated the
+  negotiation.
+- `player_terminated` – equals `1` if the player actively terminated.
+- `bargain_start_time_unix` – unix timestamp when the round started.
+- `acceptance_time_raw` – raw acceptance timestamp.
+- `acceptance_time_1000_adj` – acceptance time adjusted for the
+  millisecond bug.
+- `termination_time_raw` – raw termination timestamp.
+- `termination_time_1000_adj` – termination time adjusted for the bug.
+- `client_time_correction` – offset between client and server times.
+- `acceptance_time_sec` – corrected acceptance time in seconds.
+- `termination_time_sec` – corrected termination time in seconds.
+- `bargaining_time_full_sec` – full bargaining duration in seconds.
+- `current_second` – last recorded second for the player.
+- `offer_1`, `offer_2`, … – sequence of offers made by the player.
+- `offer_time_1`, `offer_time_2`, … – times of those offers in seconds.
+- `last_offer` – final price offered by the player.
+- `last_offer_time` – time of the final offer.
+- `number_of_offers` – how many offers the player made.
+- `deal_price_raw` – raw price at which the good traded.
+- `deal_price` – corrected deal price used for payoffs.
+- `valuation` – player's private valuation of the good.
+- `payoff` – payoff in currency units after accounting for costs.
+- `relative_valuation` – valuation rescaled by treatment as described in
+  the code.
+- `valuation_bucket` – categorical valuation: Low (<7.72), Medium
+  (7.72–21.40) or High (>21.40).
+- `gains_from_trade` – buyer valuation minus seller valuation within the
+  pair.
+- `split_gains_from_trade` – player's share of the gains from trade.
+- `gains_from_trade_dummy` – equals `1` if gains from trade are
+  non‑negative.
+- `large_gains_from_trade_indicator` – equals `1` if gains from trade
+  are at least `20`.
+- `majority_gains_from_trade_indicator` – equals `1` if the player's
+  share of gains from trade is at least `50%`.
+- `positive_gains_symmetric_treatment` – indicator for positive gains in
+  the two‑sided treatments.
+- `small_gains_from_trade_indicator` – equals `1` if gains from trade
+  lie between `0` and `10`.
+- `first_offer` – equals `1` for the player who made the first offer.
+- `first_offer_split` – first offer expressed as a fraction of the gains
+  from trade.
+- `efficiency` – `1` if the outcome is efficient given the gains from
+  trade, `0` otherwise.
+- `seller_info_public` – equals `1` for sellers in the one‑sided
+  treatment.
+- `ultimatum_offer` – ultimatum offer entered in the final stage.
+- `ultimatum_indicator` – equals `1` if the ultimatum offer was
+  ≤ 50% of the pie.
+- `risk_elicitation_choice` – choice in the risk elicitation task.
+- `time_row_1`–`time_row_6` – answers in the time preference task.
+- `time_preference_switching_points` – index of the first time‑preference
+  row with a delayed payout.
+- `experiment_start_time` – timestamp of the session start.
+- `experiment_end_time` – timestamp of the session end.
+- `experiment_duration` – total session duration in seconds.
+- `age` – age of the participant.
+- `gender` – participant's stated gender.
+- `strategy_answer` – free‑text answer describing bargaining strategy.
+- `mistake` – equals `1` if `-cumulated_TA_costs` exceeded `payoff`.
+- `negotiation_id` – unique id for each pair in each round.
+- `time_inconsistency_dummy` – equals `1` for negotiations with timing
+  inconsistencies.
+- `group_id_in_session` – id linking pairs across rounds within a
+  session.
+- `group_id` – global group identifier across sessions.
+
+These columns provide all information necessary to replicate the
+analyses in the repository.
 
 ## Getting Started
 
