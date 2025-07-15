@@ -5,20 +5,28 @@ import os
 import glob
 
 import pandas as pd
+import openpyxl
 
 
 set_plot_theme()
 
+task_symmetric_no_TA_dependencies = [SRC / "data" / "main" / "symmetric_No_TA" / "june_17_data.csv",
+    SRC / "data" / "main" / "symmetric_No_TA" / "july_14.csv"]
+
 def task_clean_data_symmetric_no_TA(
-        depends_on = SRC / "data" / "main" / "symmetric_No_TA" / "june_17_data.csv",
+        depends_on = task_symmetric_no_TA_dependencies,
         produces = BLD / "data" / "symmetric_no_TA.pkl"
 ):
-    df = pd.read_csv(depends_on)
-    print("\n Data Quality Check: for symmetric_no_TA \n --------------------------------")
-    df = clean_data_symmetric_no_TA(df)
-    print_time_inconsistency_summary(df)
+    
+    output = pd.DataFrame()
+    for depends_on in depends_on:
+        df = pd.read_csv(depends_on)
+        print("\n Data Quality Check: for symmetric_no_TA \n --------------------------------")
+        df = clean_data_symmetric_no_TA(df)
+        print_time_inconsistency_summary(df)
+        output = pd.concat([output, df], ignore_index=True)
   
-    df.to_pickle(produces)
+    output.to_pickle(produces)
 
 
 task_clean_data_asymmetric_TA_dependencies = [
@@ -127,6 +135,15 @@ def task_apply_exclusion_criteria(
     print_time_inconsistency_summary(df_2)
 
     df_2.to_csv(produces, index=False)
+
+def task_export_signaling_question_answers(
+        depends_on = BLD / "data" / "merged_data_full.csv",
+        produces = BLD / "data" / "signaling_question_answers.xlsx"
+):
+    df = pd.read_csv(depends_on)
+    signaling_questions = df.drop_duplicates(subset=["participant_label"])
+    signaling_questions = signaling_questions[["participant_label", "participant_role",'treatment', "offer_timing_question"]]
+    signaling_questions.to_excel(produces, index=False)
 
 
 

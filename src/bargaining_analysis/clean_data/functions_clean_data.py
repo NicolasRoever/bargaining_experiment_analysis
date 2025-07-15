@@ -6,6 +6,8 @@ import pdb
 import re
 from pydantic import validate_call, ConfigDict
 
+from src.bargaining_analysis.helper import validate_column_range
+
 
 #------------------------------------------------------
 # Exclusion Criteria Function
@@ -113,6 +115,12 @@ def clean_data(raw_data):
     .fillna('acceptance')
     )
 
+    df_clean["player_termination_dummy"] = np.where(
+        df_clean["termination_mode"] == "Player",
+        1,
+        0
+    )
+
     #Acceptance Information
     df_clean["accepted_by_id_in_group"] = df_long_wide["accepted_by"].astype('Int64')
     df_clean["agreement_dummy"] = np.where(
@@ -140,12 +148,14 @@ def clean_data(raw_data):
     df_clean["bargain_start_time_unix"] = df_long_wide["bargain_start_time"].astype('Float64')
     df_clean["acceptance_time_raw"] = df_long_wide["acceptance_time"]
     df_clean["acceptance_time_1000_adj"] = adjusted_acceptance_time_for_1000(df_clean)
+    validate_column_range(df_clean["acceptance_time_1000_adj"], min_val=-2, max_val=300)
     df_clean["termination_time_raw"] = df_long_wide["termination_time"].astype('Float64')
     df_clean["termination_time_1000_adj"] = adjusted_termination_times_for_1000(df_clean)
+    validate_column_range(df_clean["termination_time_1000_adj"], min_val=-2, max_val=300)
 
     df_clean["client_time_correction"] = client_time_correction_factor_series(df_clean)
-    df_clean['acceptance_time_sec'] = df_clean["acceptance_time_1000_adj"] - df_clean["client_time_correction"]
-    df_clean['termination_time_sec'] = df_clean["termination_time_1000_adj"] - df_clean["client_time_correction"]
+    df_clean['acceptance_time_sec'] = df_clean["acceptance_time_1000_adj"]# - df_clean["client_time_correction"]
+    df_clean['termination_time_sec'] = df_clean["termination_time_1000_adj"]# - df_clean["client_time_correction"]
 
     df_clean["bargaining_time_full_sec"] = df_clean["acceptance_time_sec"].combine_first(df_clean["termination_time_sec"])
 
@@ -174,8 +184,7 @@ def clean_data(raw_data):
     df_clean["offer_time_list"] = df_long_wide["offer_time_list"]
     df_clean["last_offer"] = obtain_last_offer(df_clean)
     df_clean["last_offer_time"] = last_offer_time(df_clean)
-    offer_time_columns = [col for col in df_clean.columns if col.startswith("offer_time_")]
-    df_clean["number_of_offers"] = df_clean[offer_time_columns].count(axis=1)
+    df_clean['number_of_offers'] = obtain_number_of_offers(df_clean["offer_amount_list"])
 
 
     #Valuation and Payoff
@@ -249,14 +258,14 @@ def clean_data(raw_data):
     #Add Ultimatum Offer
 
     df_clean["ultimatum_offer"] = map_round_variable(df_long_wide, df_clean, "ultimatum_offer")
-    df_clean["ultimatum_indicator"] = np.where(
-        df_clean["ultimatum_offer"]<= 25,
-        1,
-        0
+    df_clean["ultimatum_indicator"] = (
+    df_clean["ultimatum_offer"]
+      .le(25)               # True where offer ≤ 25, False where > 25, NA where offer is NA
+      .astype("Int64")      # converts True→1, False→0, NA→<NA>
     )
 
     # Add Risk Choice
-    df_clean["risk_elicitation_choice"] = map_round_variable(df_long_wide, df_clean, "risk_elicitation_choice")
+    df_clean["risk_elicitation_choice"] = -map_round_variable(df_long_wide, df_clean, "risk_elicitation_choice") # We put a minus in front, higher values indicate higher risk aversion
 
 
     #Add time preferences
@@ -285,6 +294,10 @@ def clean_data(raw_data):
         1,
         0
     )
+
+    #Add signaling question answers
+    df_clean["offer_timing_question"] = map_round_variable(
+        df_long_wide, df_clean, "offer_timing_question", dtype="str", round_number=33)
 
 
     #Remove Practice Rounds
@@ -591,21 +604,30 @@ def find_time_preference_switching_points(df: pd.DataFrame) -> pd.Series:
     """
     Scan each row's time_row_1 … time_row_6 columns in order,
     return the index (1–6) of the first value equal to 2.0.
-    If no 2.0 appears in that row, return 7.0.
+    If no 2.0 appears in that row, return 7.
+    If any of the time_row_* values is NA, return NA.
     """
-    # grab and sort the six time_row columns
+    # identify and sort the six time_row columns
     cols = sorted(
         (c for c in df.columns if c.startswith("time_row_")),
         key=lambda c: int(c.rsplit("_", 1)[-1])
     )
     n = len(cols)
-    # for each row, find first 2.0 or default to n+1
-    def _first2(row):
+
+    def _first2(row: pd.Series):
+        vals = row[cols]
+        # if any time_row is missing, bail out as NA
+        if vals.isna().any():
+            return pd.NA
+        # otherwise scan for the first 2.0
         for i, col in enumerate(cols, start=1):
-            if row[col] == 2.0:
-                return int(i)
-        return int(n + 1)
-    return df.apply(_first2, axis=1)
+            if vals[col] == 2.0:
+                return i
+        # no 2.0 found
+        return n + 1
+
+    # apply row-wise and cast to nullable integer dtype
+    return df.apply(_first2, axis=1).astype("Int64")
 
 
 def check_monotonicity_for_time_preferences(df: pd.DataFrame) -> None:
@@ -627,8 +649,8 @@ def check_monotonicity_for_time_preferences(df: pd.DataFrame) -> None:
             if prev == 1 and curr == 2:
                 transitions += 1
                 if transitions > 1:
-                    raise ValueError(
-                        f"Row {idx!r} has more than one 1→2 transition: {vals}"
+                    print(
+                        f"Warning: Row {idx!r} has more than one 1→2 transition: {vals}"
                     )
             elif prev == 2 and curr == 1:
                 print(
@@ -774,7 +796,7 @@ def adjusted_acceptance_time_for_1000(df: pd.DataFrame) -> pd.Series:
     """
 
     # Boolean mask of special sessions
-    mask = df["session_id"].isin({"o1rrqa15", "1a8klj6g"})
+    mask = df["session_id"].isin({"o1rrqa15", "1a8klj6g"}) & (df["acceptance_time_raw"] > 1000)
     
     # Compute the per-row offset (will be non-zero only where mask is True)
     offset = (
@@ -806,38 +828,6 @@ def adjusted_termination_times_for_1000(df: pd.DataFrame) -> pd.Series:
     # return corrected termination times
     return df["termination_time_raw"] + offset
 
-def client_time_correction_factor_series(df: pd.DataFrame) -> pd.Series:
-    """
-    Returns a pandas Series `client_time_correction_factor`, computed as follows:
-    - Define special_sessions_mask for rows where session_id is in SPECIAL_SESSIONS
-      and the participant (id_in_group) either accepted or terminated.
-    - server_time_estimate = cumulated_TA_costs / 0.05
-    - client_time_estimate = acceptance_time_sec.fillna(termination_time_sec)
-    - delta_client_server = client_time_estimate - server_time_estimate
-    - For each participant_code among special rows, take the minimum delta_client_server.
-    - Map that per-participant minimum back to all rows; participants not in the special set get 0.
-    """
-    # special mask
-
-    SPECIAL_SESSIONS = {"o1rrqa15", "1a8klj6g"}
-    mask = (
-        df["session_id"].isin(SPECIAL_SESSIONS)
-        & (
-            (df["accepted_by_id_in_group"] == df["id_in_group"])
-            | (df["terminated_by_id_in_group"] == df["id_in_group"])
-        )
-    )
-    # estimates and delta
-    server_est = df["cumulated_TA_costs"] / 0.05
-    client_est = df["acceptance_time_1000_adj"].fillna(df["termination_time_1000_adj"])
-    delta = client_est - server_est
-
-    # per-participant minimum delta among special rows
-    min_delta = delta[mask].groupby(df.loc[mask, "participant_code"]).min()
-
-    # map back and fill others with 0
-    return df["participant_code"].map(min_delta).fillna(0.0)
-
 
 def adjust_offer_times(
     df: pd.DataFrame,
@@ -864,7 +854,7 @@ def adjust_offer_times(
 
     if mask.any():
         # row-wise offset: a Series aligned to the rows that need fixing
-        offset = (out.loc[mask, "bargain_start_time_unix"] / 1000.0) - out.loc[mask, "bargain_start_time_unix"] - out.loc[mask, "client_time_correction"]
+        offset = (out.loc[mask, "bargain_start_time_unix"] / 1000.0) - out.loc[mask, "bargain_start_time_unix"]# - out.loc[mask, "client_time_correction"]
 
         # broadcast the offset across every offer_* column in one go
         out.loc[mask, offer_cols] = out.loc[mask, offer_cols].add(offset, axis=0)
@@ -872,6 +862,18 @@ def adjust_offer_times(
     return out
 
 
+
+def obtain_number_of_offers(series: pd.Series) -> pd.Series:
+    """
+    Given a Series of stringified Python lists, returns a Series with the count
+    of elements in each list. NA inputs yield NA outputs.
+    """
+    counts = series.map(
+        lambda s: pd.NA
+        if pd.isna(s)
+        else len(ast.literal_eval(s))
+    )
+    return counts
 
 def calculate_split_gains_from_trade(df: pd.DataFrame) -> pd.Series:
     """
@@ -954,7 +956,7 @@ def check_time_data_consistency(df: pd.DataFrame, tol: float = 3.0) -> None:
     # Rule masks
     r1 = df_filter["acceptance_time_sec"] > df_filter["bargaining_time_full_sec"] + tol
     r2 = df_filter["last_offer_time"] > df_filter["bargaining_time_full_sec"] + tol
-    r3 = df_filter["offer_time_1"] < -3
+    r3 = df_filter["offer_time_1"] < -1
 
     any_bad = r1 | r2 | r3
     if any_bad.any():
@@ -971,7 +973,9 @@ def create_time_inconsistency_dummy(df: pd.DataFrame) -> pd.Series:
     """
     Create a 0/1 dummy indicating, for each row, whether its negotiation_id
     is "time‐inconsistent." A negotiation is time‐inconsistent if any of its
-    participants ever have last_offer_time > bargaining_time_full_sec + 3.
+    participants ever have last_offer_time > bargaining_time_full_sec + 3 or their first offer is earlier than -1 seconds.
+    We need this to identify negotiations where the client's time data is inconsistent with the server's time data, which is an issue
+    in the first four sessions, where we partially relied on the client to report time data.
 
     Parameters
     ----------
@@ -990,7 +994,10 @@ def create_time_inconsistency_dummy(df: pd.DataFrame) -> pd.Series:
         last_offer_time > bargaining_time_full_sec + 3.
     """
     # 1) Find all participant_codes who ever exceed the time threshold
-    mask = ((df['last_offer_time'] > df['bargaining_time_full_sec'] + 3) | (df["acceptance_time_sec"] > df["bargaining_time_full_sec"] + 3) | (df["offer_time_1"] < -3))
+    mask = ((df['last_offer_time'] > df['bargaining_time_full_sec'] + 3) | (df["offer_time_1"] < -1)
+            & (df['session_id'].isin({"o1rrqa15", "1a8klj6g", "kyjf8njg", "r0kjoo2l"}))
+            )
+    
     offenders = df.loc[mask, 'participant_code'].unique()
 
     # 2) Find all negotiation_ids in which those participants appear
@@ -1176,10 +1183,13 @@ def print_time_inconsistency_summary(df: pd.DataFrame) -> None:
 
 def apply_technical_exclusion_criteria(df: pd.DataFrame) -> pd.DataFrame:
     """
-    - We exclude all negotiations where the current second of a player is different from the full bargaining time by more than 4 seconds. 
-    - We exclude all negotiations where there was both acceptance and termination
+    - Exclude all negotiations where the current second of a player is different
+      from the full bargaining time by more than 4 seconds.
+    - Exclude all negotiations where there was both acceptance and termination.
+    - Exclude all rows with session_id == "8jp2clvt", group_id_in_session == 4,
+      and round >= 13 (because one player dropped out)
     """
-    
+
     df_out = df.copy()
     
     # Criterion 1: time discrepancy > 4s
@@ -1189,19 +1199,67 @@ def apply_technical_exclusion_criteria(df: pd.DataFrame) -> pd.DataFrame:
     
     # Criterion 2: both acceptance and termination present
     both_mask = (
-        (df_out["acceptance_time_raw"].notna()
-        & df_out["termination_time_raw"].notna()) 
-
+        df_out["acceptance_time_raw"].notna() &
+        df_out["termination_time_raw"].notna()
     )
     bad_both_ids = df_out.loc[both_mask, "negotiation_id"].unique()
     print(f"Excluding {len(bad_both_ids)} negotiations for both acceptance and termination")
     
-    # Combine all negotiation_ids to exclude
+    # Combine negotiation_ids to exclude
     exclude_ids = set(bad_time_ids) | set(bad_both_ids)
     
-    # Filter them out
-    filtered_df = df_out.loc[~df_out["negotiation_id"].isin(exclude_ids)].reset_index(drop=True)
+    # Criterion 3: specific rows to exclude
+    third_mask = (
+        (df_out["session_id"] == "8jp2clvt") &
+        (df_out["group_id_in_session"] == 4) &
+        (df_out["round"] >= 13)
+    )
+    bad_third_count = third_mask.sum()
+    print(f"Excluding {bad_third_count} rows for session '8jp2clvt', group 4, round >= 13")
+    
+    # Filter out all excluded negotiation_ids and the specific rows
+    filtered_df = df_out.loc[
+        ~df_out["negotiation_id"].isin(exclude_ids) & 
+        ~third_mask
+    ].reset_index(drop=True)
+    
     return filtered_df
 
    
 
+
+
+#------------------------------------------------------
+#Deprecated Functions
+#------------------------------------------------------
+def client_time_correction_factor_series(df: pd.DataFrame) -> pd.Series:
+    """
+    Returns a pandas Series `client_time_correction_factor`, computed as follows:
+    - Define special_sessions_mask for rows where session_id is in SPECIAL_SESSIONS
+      and the participant (id_in_group) either accepted or terminated.
+    - server_time_estimate = cumulated_TA_costs / 0.05
+    - client_time_estimate = acceptance_time_sec.fillna(termination_time_sec)
+    - delta_client_server = client_time_estimate - server_time_estimate
+    - For each participant_code among special rows, take the minimum delta_client_server.
+    - Map that per-participant minimum back to all rows; participants not in the special set get 0.
+    """
+    # special mask
+
+    SPECIAL_SESSIONS = {"o1rrqa15", "1a8klj6g"}
+    mask = (
+        df["session_id"].isin(SPECIAL_SESSIONS)
+        & (
+            (df["accepted_by_id_in_group"] == df["id_in_group"])
+            | (df["terminated_by_id_in_group"] == df["id_in_group"])
+        )
+    )
+    # estimates and delta
+    server_est = df["cumulated_TA_costs"] / 0.05
+    client_est = df["acceptance_time_1000_adj"].fillna(df["termination_time_1000_adj"])
+    delta = client_est - server_est
+
+    # per-participant minimum delta among special rows
+    min_delta = delta[mask].groupby(df.loc[mask, "participant_code"]).min()
+
+    # map back and fill others with 0
+    return df["participant_code"].map(min_delta).fillna(0.0)

@@ -235,7 +235,8 @@ def plot_last_offer_time_vs_valuation_t34(df: pd.DataFrame):
     df_signal = df[(~np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
     (df['participant_role'] == 'Buyer') &
     (df["bargaining_outcome"]== "acceptance") &
-    (df['treatment'].isin(['T3', 'T4']))]
+    (df['treatment'].isin(['T3', 'T4'])) & 
+    (np.isclose(df['time_inconsistency_dummy'], 0))]
 
 
     set_plot_theme()
@@ -268,8 +269,8 @@ def plot_last_offer_time_vs_valuation_t34(df: pd.DataFrame):
 
 def plot_last_offer_time_vs_valuation_t12(df: pd.DataFrame):
 
-    df_signal = df[(np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
-    (df['treatment'].isin(['T1', 'T2']))]
+    df_signal = df[(~np.isclose(df["id_in_group"], df['accepted_by_id_in_group'])) & 
+    (df['treatment'].isin(['T1', 'T2'])) & np.isclose(df['time_inconsistency_dummy'], 0)]
 
     set_plot_theme()
 
@@ -281,7 +282,7 @@ def plot_last_offer_time_vs_valuation_t12(df: pd.DataFrame):
         y='last_offer_time',
         data=df_signal,
         hue='participant_role',
-        alpha=0.7
+        alpha=0.4
     )
 
     # linear fit for Buyers
@@ -291,6 +292,7 @@ def plot_last_offer_time_vs_valuation_t12(df: pd.DataFrame):
         data=df_signal[df_signal['participant_role'] == 'Buyer'],
         scatter=False,
         label='Buyer fit',
+        order=2
     )
 
     # linear fit for Sellers
@@ -300,6 +302,7 @@ def plot_last_offer_time_vs_valuation_t12(df: pd.DataFrame):
         data=df_signal[df_signal['participant_role'] == 'Seller'],
         scatter=False,
         label='Seller fit',
+        order=2
     )
 
     plt.xlabel('Valuation')
@@ -352,7 +355,6 @@ def plot_split_gains_from_trade_vs_valuation_t12(df: pd.DataFrame):
     set_plot_theme()
 
     all_t1_t2 = df[
-    (df['participant_role'] == 'Buyer') &
     (df['treatment'].isin(['T1', 'T2']))
     ]
     
@@ -457,5 +459,36 @@ def plot_mean_payoff_t3t4(df: pd.DataFrame):
     ax.legend(title='Role')
     finalize_plot(ax)
     
+    return fig
+
+
+def plot_boxplots_seller_gains_from_trade(df: pd.DataFrame):
+    """
+    Boxplots of Seller Gains from Trade by Treatment.
+    """
+    # 1. Subset seller data
+    seller = df[df['participant_role'] == 'Seller']
+
+    # 2. Pull out the two groups
+    g1 = seller[seller['treatment'].isin(['T1','T2'])]['split_gains_from_trade'].dropna()
+    g2 = seller[seller['treatment'].isin(['T3','T4'])]['split_gains_from_trade'].dropna()
+
+    # 3. Compute 1% and 99% bounds for each
+    low1, high1 = g1.quantile([0.025, 0.975])
+    low2, high2 = g2.quantile([0.025, 0.975])
+
+    # 4. Winsorize (clip) each series
+    g1_w = g1.clip(lower=low1, upper=high1)
+    g2_w = g2.clip(lower=low2, upper=high2)
+
+    set_plot_theme()
+    # 5. Plot
+    fig, ax = plt.subplots()
+    ax.boxplot([g1_w, g2_w], labels=['T1 and T2', 'T3 and T4'], 
+            medianprops={'color': sns.color_palette()[0] },)
+    ax.set_ylabel('Split Gains from Trade (winsorized)')
+    finalize_plot(ax)
+    
+
     return fig
 

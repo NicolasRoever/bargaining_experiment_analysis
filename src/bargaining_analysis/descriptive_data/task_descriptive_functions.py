@@ -111,7 +111,7 @@ def task_inject_values_for_mistakes(
     df = pd.read_csv(depends_on)
 
     total_number_mistakes = df["mistake"].sum()
-    total_number_negotiations = (len(df)) / 2
+    total_number_negotiations = round((len(df)) / 2)
     average_session_duration = round(df["experiment_duration"].mean() / 60, 2)
 
     inject_values(

@@ -3,9 +3,19 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from src.bargaining_analysis.clean_data.functions_clean_data import find_time_preference_switching_points, calculate_split_gains_from_trade, calculate_first_offer_split, create_time_inconsistency_dummy, obtain_last_offer, calculate_deal_price
+from src.bargaining_analysis.clean_data.functions_clean_data import find_time_preference_switching_points, calculate_split_gains_from_trade, calculate_first_offer_split, create_time_inconsistency_dummy, obtain_last_offer, obtain_number_of_offers
 
 
+def test_obtain_number_of_offers():
+    # sample DataFrame
+    data = pd.DataFrame({
+        'offer_amount_list': ["[8.00000000001, 9.00000000001, 10.00000000001]", "[]", "[10.00000000001, 11.00000000001, 12.00000000001]", "[8.00000000001]"],
+    })
+    expected = pd.Series([3, 0, 3, 1])
+
+    actual = obtain_number_of_offers(data["offer_amount_list"])
+
+    pd.testing.assert_series_equal(actual, expected, check_names=False, check_dtype=False)
 
 def test_find_time_preference_switching_points():
     # sample DataFrame

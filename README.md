@@ -1,5 +1,8 @@
 # Templates for Reproducible Research Projects in Economics
 
+
+- We should ask about subjective time pressure in the treatments!
+
 ```bash
  export PYTHONPATH=$PYTHONPATH:/Users/nicolasroever/Dropbox/Promotion/Bargaining/bargaining_experiment_analysis/src
 ```
@@ -35,6 +38,8 @@ cd ..
 
 - Check negotiation ID 454, somehow we have both acceptance and terminatnion (internet issues?)
 
+- We have a negotiation in the first session, where acceptance time raw has the correct seconds. How is that possible>? 
+
 
 ## On TA-Cost Differences
 - We currently have some observations in the first four data collections which have widely differing TA costs (hinting at the bigger problem with how we record time and try to fix it afterwards!); My current judgement is that we need to improve our time corrections for these observations, and then we should be fine (we are fine for outcomes of gains_from_trade anyway)
@@ -43,6 +48,12 @@ cd ..
 
 In some cases, the computer/other player is terminating as a player is submitting an offer. In this case, the offer time can be larger than the termination time, because of latency between the client and the server---the client has not been notified that the negotiation has been terminated. This happens in very few cases though, and the average difference between last offer time and termination time is 0.1 seconds; this shows that our application has very low latency. We do not consider this feature of our data to be a problem for data quality. 
 
+## Drop Outs
+
+- In session with ID '8jp2clvt', player with ID "dE5arGFL" dropped out after round 26 (for some reason, he came back later to fill in demogrphics, so these we can use, but rounds 27-30 are discarded); he is group_in_session_4, and player with ID lbnJrtKO dropped out after round 10
+
+## Before Publishing the Paper
+- Check that number of negotiations is round
 
 
 

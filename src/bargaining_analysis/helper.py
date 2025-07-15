@@ -82,3 +82,38 @@ def finalize_plot(ax=None):
         legend.get_frame().set_facecolor("white")
     
     ax.figure.tight_layout()
+
+def validate_column_range(
+    col: pd.Series,
+    min_val: float = -1000,
+    max_val: float = 1000
+) -> None:
+    """
+    Checks that all non-NaN values in the Series `col` lie between `min_val` and `max_val` (inclusive).
+    NaNs are ignored. Raises a ValueError if any non-NaN value is outside this range.
+
+    Parameters
+    ----------
+    col : pd.Series
+        The column to validate.
+    min_val : float
+        Minimum allowable value (default: -1000).
+    max_val : float
+        Maximum allowable value (default: 1000).
+
+    Raises
+    ------
+    ValueError
+        If any non-NaN value in `col` is < min_val or > max_val.
+    """
+    # Mask of entries that are non-NaN but out of range
+    out_of_range_mask = col.notna() & ~col.between(min_val, max_val, inclusive="both")
+
+    if out_of_range_mask.any():
+        bad_vals = col.loc[out_of_range_mask].unique()
+        sample = bad_vals[:10].tolist()
+        ellipsis = "…" if len(bad_vals) > 10 else ""
+        raise ValueError(
+            f"Column contains values outside [{min_val}, {max_val}]: {sample}{ellipsis}"
+        )
+    

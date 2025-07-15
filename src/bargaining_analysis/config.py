@@ -57,6 +57,8 @@ VARLABELS_REGRESSION = {'const':'Constant','first_offer':'First Offer', 'split_g
     "small_gains_from_trade_indicator" : "Gains from Trade $\\leq 10",
     "valuation":"Valuation", 
     "C(information_asymmetry)[T.two-sided]": "Two-Sided Uncertainty",
+    "first_offer:C(information_asymmetry)[one-sided]": "First Offer $\\times$ One-Sided Uncertainty",
+    "first_offer:C(information_asymmetry)[two-sided]": "First Offer $\\times$ Two-Sided Uncertainty"
     }
 
 
