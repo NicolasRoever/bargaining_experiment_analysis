@@ -78,11 +78,12 @@ The cleaned dataset used throughout the analysis is stored in `bld/data/merged_d
 after applying the following exclusion steps:
 
 1. **Pre-registered exclusions** (`apply_preregistered_exclusion_criteria`)
-   - Remove observations flagged as `mistake` where `-cumulated_TA_costs` exceeds the observed `payoff`.
-   - Drop the first four rounds, which serve as practice rounds.
+   - Remove observations flagged as `mistake` where `payoff` is smaller than -15. 
+   - Drop the first round of real bargaining
 2. **Technical exclusions** (`apply_technical_exclusion_criteria`)
    - Exclude negotiations with a difference of more than four seconds between `current_second` and `bargaining_time_full_sec`.
    - Exclude negotiations where both acceptance and termination times were recorded.
+
 
 ### Variables
 
@@ -94,16 +95,16 @@ abbreviated here.
 
 - `participant_id_in_session` – unique identifier for each participant
   within a session.
-- `participant_label` – label chosen by the participant when logging in.
+- `participant_label` – unique identifier for each participant in our experiment.
 - `participant_code` – random code assigned by oTree.
 - `participant_role` – either `Buyer` or `Seller`.
 - `group_id_in_round` – group identifier within a round.
 - `round` – bargaining round number.
-- `session_id` – identifier of the experimental session.
-- `information_asymmetry` – whether valuations were private
+- `session_id` – identifier of the experimental session (we run sessions with 32 subjects each)
+- `information_asymmetry` – whether valuations of only the buyer were private
   (`one-sided`) or symmetric (`two-sided`).
 - `TA_costs` – transaction costs per second.
-- `treatment` – shorthand combining information asymmetry and costs.
+- `treatment` – shorthand combining information asymmetry and costs (T1/T2/T3/T4).
 - `subsession.is_practice_round` – indicator for practice rounds.
 - `Role_Seller` – equals `1` for sellers and `0` for buyers.
 - `id_in_group` – player's id within the group.
@@ -184,9 +185,6 @@ abbreviated here.
 - `group_id_in_session` – id linking pairs across rounds within a
   session.
 - `group_id` – global group identifier across sessions.
-
-These columns provide all information necessary to replicate the
-analyses in the repository.
 
 ## Getting Started
 
