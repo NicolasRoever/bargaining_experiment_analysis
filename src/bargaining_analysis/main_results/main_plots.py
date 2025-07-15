@@ -474,8 +474,8 @@ def plot_boxplots_seller_gains_from_trade(df: pd.DataFrame):
     g2 = seller[seller['treatment'].isin(['T3','T4'])]['split_gains_from_trade'].dropna()
 
     # 3. Compute 1% and 99% bounds for each
-    low1, high1 = g1.quantile([0.025, 0.975])
-    low2, high2 = g2.quantile([0.025, 0.975])
+    low1, high1 = g1.quantile([0.05, 0.95])
+    low2, high2 = g2.quantile([0.05, 0.95])
 
     # 4. Winsorize (clip) each series
     g1_w = g1.clip(lower=low1, upper=high1)

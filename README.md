@@ -2,6 +2,7 @@
 
 
 - We should ask about subjective time pressure in the treatments!
+- We could also ask about subjective bargaining power
 
 ```bash
  export PYTHONPATH=$PYTHONPATH:/Users/nicolasroever/Dropbox/Promotion/Bargaining/bargaining_experiment_analysis/src
