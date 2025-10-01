@@ -3,6 +3,7 @@
 
 - We should ask about subjective time pressure in the treatments!
 - We could also ask about subjective bargaining power
+- We could ask if people think this is a repeated game or not, i.e. better get at social punishment. 
 
 ```bash
  export PYTHONPATH=$PYTHONPATH:/Users/nicolasroever/Dropbox/Promotion/Bargaining/bargaining_experiment_analysis/src

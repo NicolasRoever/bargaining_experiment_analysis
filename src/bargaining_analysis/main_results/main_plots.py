@@ -7,6 +7,156 @@ from pydantic import validate_call
 import numpy as np
 from itertools import product
 import statsmodels.formula.api as smf
+from lifelines import CoxPHFitter
+
+
+def plot_cox_by_tacosts(
+    df: pd.DataFrame,
+    duration_col: str = "bargaining_time_full_sec",
+    event_col: str = "agreement_dummy",
+    strata_col: str = "TA_costs",
+    curve: str = "survival",  # "survival" or "cumhaz"
+):
+    """
+    Fit a stratified Cox PH model (strata = TA_costs) for bargaining_duration,
+    and plot baseline curves separately for each TA_costs level.
+
+    - duration_col: time-to-event in the same units across rows
+    - event_col: 1 if event occurred (agreement), 0 if censored
+    - strata_col: categorical TA_costs variable
+    - curve: "survival" (baseline survival) or "cumhaz" (baseline cumulative hazard)
+    """
+    plot_df = df[
+    (df['participant_role'] == 'Buyer') & 
+    (df["TA_costs"] >= 0)
+    ].copy()
+    # keep only needed, drop NAs
+    d = plot_df[[duration_col, event_col, strata_col]].dropna().copy()
+
+    # Fit a Cox model stratified by TA_costs (no covariates needed)
+    cph = CoxPHFitter()
+    cph.fit(
+        d,
+        duration_col=duration_col,
+        event_col=event_col,
+        strata=[strata_col],
+        show_progress=False,
+    )
+
+    # Choose which baseline curve to plot
+    if curve == "survival":
+        base = cph.baseline_survival_
+        ylab = "Baseline survival S(t)"
+    elif curve == "cumhaz":
+        base = cph.baseline_cumulative_hazard_
+        ylab = "Baseline cumulative hazard H(t)"
+    else:
+        raise ValueError('curve must be "survival" or "cumhaz"')
+
+    set_plot_theme()
+    fig, ax = plt.subplots()
+    for col in base.columns:
+        ax.plot(base.index.values, base[col].values, label=str(col))
+
+    ax.set_xlabel("Time in seconds")
+
+    ax.set_xlabel("Time in seconds")
+    ax.set_ylabel(ylab)
+    handles, labels = ax.get_legend_handles_labels()
+    new_labels = ["No TA Costs", "TA Costs"]
+    ax.legend(handles, new_labels)
+    finalize_plot(ax)
+    plt.show()
+
+    return fig 
+
+
+
+
+
+def plot_agreement_prob_by_gft_ma3(df: pd.DataFrame, binning: str = "nearest"):
+    """
+    Plot P(agreement) vs gains_from_trade (0..60), using a centered 3-point moving average,
+    with separate lines for each TA_costs value.
+    """
+    g = df.copy()
+
+    # Convert gains_from_trade to integer bins
+    if binning == "nearest":
+        g["gft_int"] = g["gains_from_trade"].round().astype(int)
+    elif binning == "floor":
+        g["gft_int"] = np.floor(g["gains_from_trade"]).astype(int)
+    elif binning == "ceil":
+        g["gft_int"] = np.ceil(g["gains_from_trade"]).astype(int)
+    else:
+        raise ValueError("binning must be one of: 'nearest', 'floor', 'ceil'.")
+
+    # Keep only 0..60
+    g = g[(g["gft_int"] >= 0) & (g["gft_int"] <= 60)]
+
+    set_plot_theme()
+    fig, ax = plt.subplots()
+
+    for ta, group in g.groupby("TA_costs"):
+        summary = (
+            group.groupby("gft_int")["agreement_dummy"]
+            .agg(prob="mean", n="size")
+            .reindex(range(0, 61))
+        )
+        summary["prob_ma3"] = summary["prob"].rolling(window=3, center=True, min_periods=1).mean()
+        ax.plot(
+            summary.index,
+            summary["prob_ma3"],
+            marker="o",
+            label=f"TA_costs={ta}"
+        )
+
+    ax.set_xlim(0, 60)
+    ax.set_ylim(0, 1.1)
+    ax.set_xlabel("Gains from trade")
+    ax.set_ylabel("Probability of agreement (3-pt moving average)")
+    ax.set_title("Probability of Agreement vs Gains from Trade (MA-3)")
+    ax.legend(title="TA_costs")
+    finalize_plot(ax)
+    # Adjust legend labels
+    handles, labels = ax.get_legend_handles_labels()
+    new_labels = []
+    for label in labels:
+        if label == "TA_costs=0.0":
+            new_labels.append("No TA Costs")
+        else:
+            new_labels.append("TA Costs")
+    ax.legend(handles, new_labels)
+
+    return fig
+
+
+
+def plot_buyer_share_as_function_of_surplus(df: pd.DataFrame):
+    # Filter for buyers
+    plot_df = df[
+        (df['participant_role'] == 'Buyer') & 
+        (df["split_gains_from_trade"] >= 0) & 
+        (df["split_gains_from_trade"] <= 1) & 
+        (df["treatment"].isin(["T1", "T2"]))
+    ].copy()
+
+    set_plot_theme()
+    plt.figure(figsize=(8, 6))
+    scatter = plt.scatter(
+        plot_df['buyer_valuation'],
+        plot_df['seller_valuation'],
+        c=plot_df['split_gains_from_trade'],
+        alpha=0.7
+    )
+    plt.xlabel('Buyer Valuation')
+    plt.ylabel('Seller Valuation')
+    plt.title('Seller Valuation vs Buyer Valuation (Buyers Only)')
+    cbar = plt.colorbar(scatter)
+    cbar.set_label('Split Gains From Trade')
+    finalize_plot()
+
+    return plt
 
 def plot_boxplots_buyer_split_gains_from_trade(df: pd.DataFrame):
 

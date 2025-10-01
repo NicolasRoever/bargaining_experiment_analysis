@@ -3,7 +3,33 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from src.bargaining_analysis.clean_data.functions_clean_data import find_time_preference_switching_points, calculate_split_gains_from_trade, calculate_first_offer_split, create_time_inconsistency_dummy, obtain_last_offer, obtain_number_of_offers
+from src.bargaining_analysis.clean_data.functions_clean_data import find_time_preference_switching_points, calculate_split_gains_from_trade, calculate_first_offer_split, create_time_inconsistency_dummy, obtain_last_offer, obtain_number_of_offers, create_buyer_valuation_column, create_seller_valuation_column
+
+
+@pytest.fixture
+def buyer_valuation_data():
+    return pd.DataFrame({ 
+        'negotiation_id': [1, 1, 2, 2],
+        'session_id': ['1', '1', '1', '1'],
+        'round': [1, 1, 2, 2],
+        'group_id_in_round': [1, 1, 2, 2],
+        'participant_role': ['Buyer', 'Seller', 'Buyer', 'Seller'],
+        'valuation': [10, 15, 20, 25],
+    })
+
+def test_create_buyer_valuation_column(buyer_valuation_data):
+    expected = pd.Series([10, 10, 20, 20])
+    actual = create_buyer_valuation_column(buyer_valuation_data, )
+    pd.testing.assert_series_equal(actual, expected, check_names=False, check_dtype=False)
+
+
+def test_create_seller_valuation_column(buyer_valuation_data):
+    expected = pd.Series([15, 15, 25, 25])
+    actual = create_seller_valuation_column(buyer_valuation_data)
+    pd.testing.assert_series_equal(actual, expected, check_names=False, check_dtype=False)
+
+
+
 
 
 def test_obtain_number_of_offers():

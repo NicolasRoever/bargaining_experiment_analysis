@@ -192,6 +192,8 @@ def clean_data(raw_data):
     df_clean["deal_price"] = correct_deal_price(df_clean)
     df_clean["valuation"] = df_long_wide["valuation"].astype('Int64')
     df_clean['payoff'] = calculate_payoff(df_clean)
+    df_clean["seller_valuation"] = create_seller_valuation_column(df_clean)
+    df_clean["buyer_valuation"] = create_buyer_valuation_column(df_clean)
     
     
     df_clean['relative_valuation'] = calculate_relative_valuation(df_clean)
@@ -1225,9 +1227,47 @@ def apply_technical_exclusion_criteria(df: pd.DataFrame) -> pd.DataFrame:
     
     return filtered_df
 
-   
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def create_buyer_valuation_column(df: pd.DataFrame) -> pd.Series:
+    """
+    For each row, return the Buyer’s valuation for that row's group identified by
+    ['session_id', 'round', 'group_id_in_round'].
+    The Buyer’s valuation is copied to both the buyer and the seller rows.
+    """
+    keys = ["session_id", "round", "group_id_in_round"]
 
+    # Rows where the participant is the Buyer
+    buyers = (
+        df.loc[df["participant_role"].eq("Buyer"), keys + ["valuation"]]
+          .drop_duplicates(keys, keep="first")
+          .rename(columns={"valuation": "buyer_valuation"})
+    )
 
+    # Join buyer valuations back to all rows on the group keys,
+    # then return as a Series aligned to the original order.
+    merged = df.merge(buyers, on=keys, how="left")
+    return pd.Series(merged["buyer_valuation"].to_numpy(), index=df.index)
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def create_seller_valuation_column(df: pd.DataFrame) -> pd.Series:
+    """
+    For each row, return the Seller ’s valuation for that row's group identified by
+    ['session_id', 'round', 'group_id_in_round'].
+    The Buyer’s valuation is copied to both the buyer and the seller rows.
+    """
+    keys = ["session_id", "round", "group_id_in_round"]
+
+    # Rows where the participant is the Seller
+    sellers = (
+        df.loc[df["participant_role"].eq("Seller"), keys + ["valuation"]]
+          .drop_duplicates(keys, keep="first")
+          .rename(columns={"valuation": "seller_valuation"})
+    )
+
+    # Join seller valuations back to all rows on the group keys,
+    # then return as a Series aligned to the original order.
+    merged = df.merge(sellers, on=keys, how="left")
+    return pd.Series(merged["seller_valuation"].to_numpy(), index=df.index)
 
 #------------------------------------------------------
 #Deprecated Functions
