@@ -7,6 +7,7 @@ from pydantic import validate_call
 import numpy as np
 from itertools import product
 import statsmodels.formula.api as smf
+import statsmodels.api as sm
 from lifelines import CoxPHFitter
 
 
@@ -725,7 +726,7 @@ def plot_deviation_from_equal_split_symnocost(df, binning='width', num_bins=8, t
 def plot_logit_fit_for_agreement_symno(df):
 
     buyer_df = df[(df["participant_role"] == "Buyer") &
-             (df["treatment"] == "T1") & 
+             (df["treatment"] == "T1")
               ].copy()
     # Bin gains_from_trade into fixed-width bins of size 5 from 0 to 60
     bins = np.arange(0, 61, 5)
@@ -749,7 +750,7 @@ def plot_logit_fit_for_agreement_symno(df):
 
     # Plot dots at bin centers with error bars for CI, connected by a line
     ax.errorbar(bin_centers, pred_probs_centers, yerr=[pred_probs_centers - pred_ci_centers[:, 0], pred_ci_centers[:, 1] - pred_probs_centers], 
-                fmt='o-', color=color_scheme[0], capsize=5)
+                fmt='o-', color=sns.color_palette()[0], capsize=5)
 
     ax.set_xlabel('Gains from Trade')
     ax.set_ylabel('Agreement Rate (Logit Fit)')
@@ -760,4 +761,79 @@ def plot_logit_fit_for_agreement_symno(df):
     ax.legend()
     finalize_plot(ax)
 
+    return fig
+
+
+def plot_first_offer_regression(df):
+    analysis_df = df[
+             (df["treatment"] == "T1") & 
+             (df["time_inconsistency_dummy"]==0)
+              ].copy()
+    # Filter for agreements where split_gains_from_trade is not NaN
+    agreements = analysis_df.dropna(subset=['split_gains_from_trade']).copy()
+    # Specification 1: Full model
+    model1 = smf.ols('split_gains_from_trade ~ first_offer + bs(gains_from_trade, df=3) + C(session_id) + C(session_id):C(group_id_in_session)', 
+                    data=agreements).fit()
+
+    # Specification 2: Without C(participant_code)
+    model2 = smf.ols('split_gains_from_trade ~ first_offer + bs(gains_from_trade, df=3) + C(session_id) + C(session_id):C(group_id_in_session) + C(participant_role)', 
+                    data=agreements).fit()
+
+    # Specification 3: Without C(participant_role)
+    model3 = smf.ols('split_gains_from_trade ~ first_offer + bs(gains_from_trade, df=3) + C(session_id) + C(session_id):C(group_id_in_session) + C(participant_code)', 
+                    data=agreements).fit()
+
+    # Extract coefficients and CIs for first_offer
+    coeffs = [model1.params['first_offer'], model2.params['first_offer'], model3.params['first_offer']]
+    cis = [model1.conf_int().loc['first_offer'], model2.conf_int().loc['first_offer'], model3.conf_int().loc['first_offer']]
+    labels = ['Baseline', 'With Role Fixed Effect' , 'With Individual Fixed Effect']
+
+    # Compute yerr properly (now xerr since axes flipped)
+    lower_errs = [coeffs[i] - cis[i].iloc[0] for i in range(len(coeffs))]
+    upper_errs = [cis[i].iloc[1] - coeffs[i] for i in range(len(coeffs))]
+    xerr = [lower_errs, upper_errs]
+
+    # Plot with flipped axes
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.errorbar(coeffs, range(len(coeffs)), xerr=xerr, fmt='o', capsize=5, color=sns.color_palette()[0])
+    ax.set_yticks(range(len(labels)))
+    ax.set_yticklabels(labels)
+    ax.set_xlabel('Coefficient of First Offer On GFT-Split')
+    ax.set_ylabel('')
+    ax.axvline(x=0, linestyle='--', color='black', linewidth=0.5)
+    finalize_plot(ax)
+
+    return fig
+
+
+def densities_by_first_offer_symno(df):
+    analysis_df = df[
+             (df["treatment"] == "T1") & 
+             (df["time_inconsistency_dummy"]==0)
+              ].copy()
+
+    analysis_df["gft_split_centered"] = analysis_df["split_gains_from_trade"] - 0.5
+    # Make labels via the data (Seaborn’s preferred way)
+    df_plot = analysis_df.dropna(subset=['split_gains_from_trade', 'first_offer']).copy()
+    df_plot['first_offer'] = df_plot['first_offer'].map({0: 'Yes', 1: 'No'})
+
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    sns.kdeplot(
+        data=df_plot, x='gft_split_centered', hue='first_offer',
+        ax=ax, fill=False, linewidth=3, palette=sns.color_palette()[:2], legend=True
+    )
+    ax.set_xlabel('Split Gains from Trade')
+    ax.set_ylabel('Density')
+    ax.set_title('Density of Split Gains from Trade by First Offer')
+
+    # Optionally reposition the legend with seaborn helper:
+
+    sns.move_legend(ax, "best", title='Made First Offer')
+
+    ax.axvline(x=0, linestyle='--', color='black', linewidth=1)
+    finalize_plot(ax)
+    
     return fig

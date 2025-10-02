@@ -1,6 +1,6 @@
 from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_vs_valuation, regression_table_symmetric_treatment,regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators, plot_buyer_first_offer_vs_valuation, plot_two_sided_signaling, plot_split_gains_by_treatment_role_grouped_t34, plot_buyer_payoff_vs_gains_from_trade_t12, plot_offer_time_vs_valuation_demeaned_t34_buyer, plot_offer_time_vs_valuation_demeaned_t12
 
-from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12, plot_mean_payoff_t3t4, plot_boxplots_seller_gains_from_trade, plot_buyer_share_as_function_of_surplus, plot_agreement_prob_by_gft_ma3, plot_cox_by_tacosts, plot_deviation_from_equal_split_symnocost, plot_logit_fit_for_agreement_symno
+from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12, plot_mean_payoff_t3t4, plot_boxplots_seller_gains_from_trade, plot_buyer_share_as_function_of_surplus, plot_agreement_prob_by_gft_ma3, plot_cox_by_tacosts, plot_deviation_from_equal_split_symnocost, plot_logit_fit_for_agreement_symno,  plot_first_offer_regression, densities_by_first_offer_symno
 
 from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers, run_signaling_regressions, run_information_efficiency_regression, bargaining_power_regressions
 
@@ -113,9 +113,27 @@ def task_run_signaling_regressions(
 # Plots
 #--------------------------------------------------------------
 
+
+def task_densities_by_first_offer_symno(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "densities_by_first_offer_symno.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = densities_by_first_offer_symno(df)
+    plot.savefig(produces)
+
+
+def task_plot_first_offer_regression(
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+    produces = OVERLEAF_FIGURES / "coefplot_firstoffer_symno.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_first_offer_regression(df)
+    plot.savefig(produces)
+
 def task_plot_logit_fit_for_agreement_symno(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
-        produces = OVERLEAF_FIGURES / "figures/autom_figures/agreement_frontier_symno.pdf"
+        produces = OVERLEAF_FIGURES / "agreement_frontier_symno.pdf"
 ):
     df = pd.read_csv(depends_on)
     plot = plot_logit_fit_for_agreement_symno(df)
