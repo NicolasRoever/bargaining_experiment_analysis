@@ -644,14 +644,10 @@ def plot_boxplots_seller_gains_from_trade(df: pd.DataFrame):
     return fig
 
 
-def plot_deviation_from_equal_split_symnocost(df, binning='width', num_bins=8, time_inconsistency=False):
+def plot_deviation_from_equal_split_sym(df, binning='width', num_bins=8, time_inconsistency=False):
 
-    buyer_df = df[(df["participant_role"] == "Buyer") &
-                (df["treatment"] == "T1") & 
-                (df["gains_from_trade"] > 0)
-                ].copy()
     # Filter for agreements (where split_gains_from_trade is not NaN)
-    buyer_agreements = buyer_df.dropna(subset=['split_gains_from_trade']).copy()
+    buyer_agreements = df.dropna(subset=['split_gains_from_trade']).copy()
 
     if time_inconsistency:
         # Further filter for time inconsistency if needed
@@ -723,10 +719,9 @@ def plot_deviation_from_equal_split_symnocost(df, binning='width', num_bins=8, t
 
 
 
-def plot_logit_fit_for_agreement_symno(df):
+def plot_logit_fit_for_agreement_sym(df):
 
-    buyer_df = df[(df["participant_role"] == "Buyer") &
-             (df["treatment"] == "T1")
+    buyer_df = df[(df["participant_role"] == "Buyer")
               ].copy()
     # Bin gains_from_trade into fixed-width bins of size 5 from 0 to 60
     bins = np.arange(0, 61, 5)
@@ -766,7 +761,6 @@ def plot_logit_fit_for_agreement_symno(df):
 
 def plot_first_offer_regression(df):
     analysis_df = df[
-             (df["treatment"] == "T1") & 
              (df["time_inconsistency_dummy"]==0)
               ].copy()
     # Filter for agreements where split_gains_from_trade is not NaN
