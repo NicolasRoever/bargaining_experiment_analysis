@@ -20,6 +20,11 @@ cd ..
 ```
 
 
+### Plan for Today 
+
+- Add Split gains from trade in Appendix table tab:regressions_asymmetric_bargaining
+- Fix Cox curves
+- Evidence on Division
 ### Open To-Do
 
 - Fix how we correct times in the first 4 sessions; there are still issues.

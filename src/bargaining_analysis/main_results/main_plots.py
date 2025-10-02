@@ -642,3 +642,81 @@ def plot_boxplots_seller_gains_from_trade(df: pd.DataFrame):
 
     return fig
 
+
+def plot_deviation_from_equal_split_symnocost(df, binning='width', num_bins=8, time_inconsistency=False):
+
+    buyer_df = df[(df["participant_role"] == "Buyer") &
+                (df["treatment"] == "T1") & 
+                (df["gains_from_trade"] > 0)
+                ].copy()
+    # Filter for agreements (where split_gains_from_trade is not NaN)
+    buyer_agreements = buyer_df.dropna(subset=['split_gains_from_trade']).copy()
+
+    if time_inconsistency:
+        # Further filter for time inconsistency if needed
+        buyer_agreements = buyer_agreements[buyer_agreements['time_inconsistency_dummy'] == 0]
+
+    # Compute deviation from 0.5
+    buyer_agreements['abs_dev'] = (buyer_agreements['split_gains_from_trade'] - 0.5)
+
+    if binning == 'width':
+        # Get bin edges for fixed-width bins of size 5 starting from 0
+        gft_max = buyer_agreements['gains_from_trade'].max()
+        bins = np.arange(0, gft_max + 5, 5)
+        buyer_agreements['gft_bin'] = pd.cut(buyer_agreements['gains_from_trade'], bins=bins, labels=False, include_lowest=True)
+    elif binning == 'quantile':
+        # Use quantile-based binning for equal counts, but force bins to start at 0
+        bin_edges = buyer_agreements['gains_from_trade'].quantile([i/num_bins for i in range(num_bins+1)]).values
+        bin_edges[0] = 0  # Force the first bin to start at 0
+        buyer_agreements['gft_bin'] = pd.cut(buyer_agreements['gains_from_trade'], bins=bin_edges, labels=False, include_lowest=True)
+    else:
+        raise ValueError("binning must be 'width' or 'quantile'")
+
+    # Group by bin and compute mean abs_dev, sample size, and 95% CI (clustered by negotiation_id)
+    results = []
+    for bin_idx in range(num_bins):
+        bin_data = buyer_agreements[buyer_agreements['gft_bin'] == bin_idx]
+        if len(bin_data) > 0:
+            # Fit OLS to get clustered SE
+            model = smf.ols('abs_dev ~ 1', data=bin_data).fit(cov_type='cluster', cov_kwds={'groups': bin_data['negotiation_id']})
+            mean_val = model.params['Intercept']
+            ci = model.conf_int(alpha=0.05).loc['Intercept']
+            n = len(bin_data)
+            results.append({
+                'bin': bin_idx,
+                'mean': mean_val,
+                'ci_low': ci[0],
+                'ci_high': ci[1],
+                'n': n
+            })
+
+    results_df = pd.DataFrame(results)
+
+    # Plot
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Bar plot with error bars
+    ax.bar(results_df['bin'], results_df['mean'], yerr=[results_df['mean'] - results_df['ci_low'], results_df['ci_high'] - results_df['mean']], 
+           capsize=5, color=sns.color_palette()[0])
+ 
+    ax.set_xlabel('Gains from Trade Bins')
+    ax.set_ylabel('Deviation from Equal Split')
+    ax.set_xticks(range(num_bins))
+    if binning == 'width':
+        bin_labels = [f'[{bins[i]:.1f}, {bins[i+1]:.1f})' for i in range(num_bins)]
+    else:
+        # For quantile, use the adjusted bin edges
+        bin_labels = [f'[{bin_edges[i]:.1f}, {bin_edges[i+1]:.1f})' for i in range(num_bins)]
+    ax.set_xticklabels(bin_labels, rotation=45, ha='right')
+
+    # Add n values above each bar
+    for i, row in results_df.iterrows():
+        ax.text(i, row['ci_high'] + 0.01, f'n={int(row["n"])}', ha='center', va='bottom', fontsize=10)
+
+    # Add horizontal dotted line at y=0
+    ax.axhline(y=0, linestyle='--', color='black', linewidth=0.5)
+
+    finalize_plot(ax)
+    return fig
+
