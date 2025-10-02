@@ -720,3 +720,44 @@ def plot_deviation_from_equal_split_symnocost(df, binning='width', num_bins=8, t
     finalize_plot(ax)
     return fig
 
+
+
+def plot_logit_fit_for_agreement_symno(df):
+
+    buyer_df = df[(df["participant_role"] == "Buyer") &
+             (df["treatment"] == "T1") & 
+              ].copy()
+    # Bin gains_from_trade into fixed-width bins of size 5 from 0 to 60
+    bins = np.arange(0, 61, 5)
+    buyer_df['gft_bin'] = pd.cut(buyer_df['gains_from_trade'], bins=bins, labels=False, include_lowest=True)
+
+    # Logistic regression for smooth fit
+    buyer_df['agreement_dummy'] = (buyer_df['bargaining_outcome'] == 'acceptance').astype(int)
+    logit_model = sm.Logit(buyer_df['agreement_dummy'], sm.add_constant(buyer_df['gains_from_trade'])).fit(disp=False)
+
+    # Calculate bin centers for plotting
+    bin_centers = [(bins[i] + bins[i+1]) / 2 for i in range(len(bins) - 1)]
+
+    # Get predictions at bin centers
+    pred_at_centers = logit_model.get_prediction(sm.add_constant(bin_centers), which="mean")
+    pred_probs_centers = pred_at_centers.predicted
+    pred_ci_centers = pred_at_centers.conf_int()
+
+    # Plot
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Plot dots at bin centers with error bars for CI, connected by a line
+    ax.errorbar(bin_centers, pred_probs_centers, yerr=[pred_probs_centers - pred_ci_centers[:, 0], pred_ci_centers[:, 1] - pred_probs_centers], 
+                fmt='o-', color=color_scheme[0], capsize=5)
+
+    ax.set_xlabel('Gains from Trade')
+    ax.set_ylabel('Agreement Rate (Logit Fit)')
+    ax.set_xlim(0, 60)
+    ax.set_xticks(bin_centers)
+    bin_labels = [f'[{bins[i]:.1f}, {bins[i+1]:.1f})' for i in range(len(bins) - 1)]
+    ax.set_xticklabels(bin_labels, rotation=45, ha='right')
+    ax.legend()
+    finalize_plot(ax)
+
+    return fig
