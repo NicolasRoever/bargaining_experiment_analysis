@@ -767,15 +767,24 @@ def plot_first_offer_regression(df):
     agreements = analysis_df.dropna(subset=['split_gains_from_trade']).copy()
     # Specification 1: Full model
     model1 = smf.ols('split_gains_from_trade ~ first_offer + bs(gains_from_trade, df=3) + C(session_id) + C(session_id):C(group_id_in_session)', 
-                    data=agreements).fit()
+                    data=agreements).fit(
+                        cov_type='cluster',
+                        cov_kwds={'groups': agreements['participant_code']}
+                    )
 
     # Specification 2: Without C(participant_code)
     model2 = smf.ols('split_gains_from_trade ~ first_offer + bs(gains_from_trade, df=3) + C(session_id) + C(session_id):C(group_id_in_session) + C(participant_role)', 
-                    data=agreements).fit()
+                    data=agreements).fit(
+                        cov_type='cluster',
+                        cov_kwds={'groups': agreements['participant_code']}
+                    )
 
     # Specification 3: Without C(participant_role)
     model3 = smf.ols('split_gains_from_trade ~ first_offer + bs(gains_from_trade, df=3) + C(session_id) + C(session_id):C(group_id_in_session) + C(participant_code)', 
-                    data=agreements).fit()
+                    data=agreements).fit(
+                        cov_type='cluster',
+                        cov_kwds={'groups': agreements['participant_code']}
+                    )
 
     # Extract coefficients and CIs for first_offer
     coeffs = [model1.params['first_offer'], model2.params['first_offer'], model3.params['first_offer']]
@@ -830,4 +839,42 @@ def densities_by_first_offer_symno(df):
     ax.axvline(x=0, linestyle='--', color='black', linewidth=1)
     finalize_plot(ax)
     
+    return fig
+
+
+def plot_density_of_split_by_gft_exclusions_symcost(df):
+    df_plot = df[(df["participant_role"] == "Buyer") &
+                (df["treatment"] == "T2") & 
+                (df["gains_from_trade"] > 0)
+                ].copy()
+
+    df_plot["gft_split_centered"] = df_plot["split_gains_from_trade"] - 0.5
+        # Make labels via the data (Seaborn’s preferred way)
+    df_plot = df_plot.dropna(subset=['split_gains_from_trade']).copy()
+
+    # Create a combined dataframe for plotting
+    df_all = df_plot.copy()
+    df_all['group'] = 'All Observations'
+
+    df_excl = df_plot[df_plot["gains_from_trade"] > 5].copy()
+    df_excl['group'] = 'Excluding GFT $\leq$ 5'
+
+    df_combined = pd.concat([df_all, df_excl])
+
+    # Plot combined density
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    sns.kdeplot(
+        data=df_combined, x='gft_split_centered', hue='group',
+        ax=ax, fill=False, linewidth=3, palette=sns.color_palette()[:2], legend=True
+    )
+    ax.set_xlabel('Split Gains from Trade - 0.5')
+    ax.set_ylabel('Density')
+
+    # Adjust legend
+    sns.move_legend(ax, "best", title='')
+
+    ax.axvline(x=0, linestyle='--', color='black', linewidth=1)
+    finalize_plot(ax)
     return fig
