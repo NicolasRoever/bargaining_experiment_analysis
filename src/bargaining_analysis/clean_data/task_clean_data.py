@@ -11,7 +11,8 @@ import openpyxl
 set_plot_theme()
 
 task_symmetric_no_TA_dependencies = [SRC / "data" / "main" / "symmetric_No_TA" / "june_17_data.csv",
-    SRC / "data" / "main" / "symmetric_No_TA" / "july_14.csv"]
+    SRC / "data" / "main" / "symmetric_No_TA" / "july_14.csv", 
+    SRC / "data" / "main" / "symmetric_No_TA" / "december_2.csv"]
 
 def task_clean_data_symmetric_no_TA(
         depends_on = task_symmetric_no_TA_dependencies,
@@ -31,7 +32,8 @@ def task_clean_data_symmetric_no_TA(
 
 task_clean_data_asymmetric_TA_dependencies = [
    SRC / "data" / "main" / "asymmetric_TA" / "asymmetric_TA_1.csv",
-    SRC / "data" / "main" / "asymmetric_TA" / "july_8.csv"
+    SRC / "data" / "main" / "asymmetric_TA" / "july_8.csv", 
+    SRC / "data" / "main" / "asymmetric_TA" / "november_27_asy_TA.csv"
     ]
 
 
@@ -53,11 +55,13 @@ def task_clean_data_asymmetric_TA(
 
 
 
-task_clean_data_asymmetric_TA_dependencies = [
+task_clean_data_symmetric_TA_dependencies = [
     SRC / "data" / "main" / "symmetric_TA" / "data_june_13.csv", 
-    SRC / "data" / "main" / "symmetric_TA" / "july_9.csv"]
+    SRC / "data" / "main" / "symmetric_TA" / "july_9.csv", 
+    SRC / "data" / "main" / "symmetric_TA" / "november_28_sym_TA.csv"
+    ]
 def task_clean_data_symmetric_TA(
-        depends_on = task_clean_data_asymmetric_TA_dependencies,
+        depends_on = task_clean_data_symmetric_TA_dependencies,
         produces = BLD / "data" / "symmetric_TA.pkl"
 ):
     
@@ -74,7 +78,9 @@ def task_clean_data_symmetric_TA(
 
 task_clean_data_asymmetric_no_TA_dependencies = [
     SRC / "data" / "main" / "asymmetric_No_TA" / "june_16.csv",
-    SRC / "data" / "main" / "asymmetric_No_TA" / "july_10.csv"]
+    SRC / "data" / "main" / "asymmetric_No_TA" / "july_10.csv",
+    SRC / "data" / "main" / "asymmetric_No_TA" / "december_1.csv" 
+    ]
 
 def task_clean_data_asymmetric_no_TA(
         depends_on = task_clean_data_asymmetric_no_TA_dependencies,

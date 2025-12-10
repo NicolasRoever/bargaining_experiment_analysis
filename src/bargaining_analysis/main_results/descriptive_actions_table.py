@@ -1,4 +1,5 @@
 import pandas as pd
+from pydantic import validate_call
 
 def calculate_bargaining_actions_values(df: pd.DataFrame) -> dict:
     """
@@ -26,7 +27,7 @@ def calculate_bargaining_actions_values(df: pd.DataFrame) -> dict:
         grp_time = df[(df['treatment'] == t) & (df["time_inconsistency_dummy"] == 0)]
         
         # compute continuous statistics
-        for col in ['number_of_offers', 'payoff', 'efficiency']:
+        for col in ['number_of_offers', 'payoff']:
             mean_val = grp[col].mean()
             sd_val   = grp[col].std(ddof=1)
             out[f'{col}_{t}']     = f"{mean_val:.2f}"
@@ -52,5 +53,55 @@ def calculate_bargaining_actions_values(df: pd.DataFrame) -> dict:
             sd_val   = series.std(ddof=1)
             out[f'{key}_{t}']    = f"{mean_val:.2f}"
             out[f'{key}_sd_{t}'] = f"{sd_val:.2f}"
+
+        # compute WAR and WAR+
+        war_val = calculate_war(df, t)
+        war_plus_val = calculate_war_plus(df, t)
+        out[f'WAR_{t}'] = f"{war_val:.2f}"
+        out[f'WAR_plus_{t}'] = f"{war_plus_val:.2f}"
     
     return out
+
+
+def calculate_war(df: pd.DataFrame, treatment: str) -> float:
+    """
+    WAR = sum(realized surplus) / sum(gains_from_trade)
+    Realized surplus = gains_from_trade if bargaining_outcome == 'acceptance', else 0.
+    Drops duplicate negotiation_id rows (keeps the first).
+    """
+    df = df.drop_duplicates(subset=['negotiation_id'], keep='first')
+    df = df[df['treatment'] == treatment]
+
+    df['realized_surplus'] = df.apply(
+        lambda row: row['gains_from_trade'] if row['bargaining_outcome'] == 'acceptance' else 0,
+        axis=1
+    )
+
+    numerator = df['realized_surplus'].sum()
+    denominator = df[df["gains_from_trade"] > 0]["gains_from_trade"].sum()
+
+    return numerator / denominator if denominator != 0 else float('nan')
+
+def calculate_war_plus(df: pd.DataFrame, treatment: str) -> float:
+    """
+    WAR+ = (realized surplus + positive unrealized) / sum(gains_from_trade)
+    Positive unrealized = gains_from_trade if gains_from_trade > 0 and not accepted, else 0.
+    Drops duplicate negotiation_id rows (keeps the first).
+    """
+    df = df.drop_duplicates(subset=['negotiation_id'], keep='first')
+    df = df[df['treatment'] == treatment]
+
+    df['realized_surplus'] = df.apply(
+        lambda row: row['gains_from_trade'] if row['bargaining_outcome'] == 'acceptance' else 0,
+        axis=1
+    )
+
+    df['positive_realized'] = df.apply(
+        lambda row: row['gains_from_trade'] if (row['bargaining_outcome'] == 'acceptance' and row['gains_from_trade'] > 0) else 0,
+        axis=1
+    )
+
+    numerator = df['positive_realized'].sum()
+    denominator = df[df["gains_from_trade"] > 0]["gains_from_trade"].sum()
+
+    return numerator / denominator if denominator != 0 else float('nan')

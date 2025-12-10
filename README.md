@@ -59,6 +59,8 @@ In some cases, the computer/other player is terminating as a player is submittin
 
 - In session with ID '8jp2clvt', player with ID "dE5arGFL" dropped out after round 26 (for some reason, he came back later to fill in demogrphics, so these we can use, but rounds 27-30 are discarded); he is group_in_session_4, and player with ID lbnJrtKO dropped out after round 10
 
+- Drop out of ID n3uicero in session with ID '76kuqtpi'
+
 ## Before Publishing the Paper
 - Check that number of negotiations is round
 
