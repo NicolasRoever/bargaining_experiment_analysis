@@ -61,7 +61,7 @@ def compare_termination_rates_low_rest(df):
 
     results = {
         "n_low_buyercost": n_low,
-        "fraction_low_buyercost": rate_low,
+        "fraction_low_buyercost": round(rate_low*100,0),
         "n_high_buyercost": n_high,
         "fraction_high_buyercost": rate_high,
         "term_low_buyercost": term_low,

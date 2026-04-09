@@ -51,7 +51,7 @@ def test_residuals_model_actual(df):
 
     results = _run_ttest("All T4 buyers", df["residual"])
 
-    results.update(residuals_fraction_surplus=round(df["residual"].mean() / average_surplus,2))
+    results.update(residuals_fraction_surplus=round(df["residual"].mean() / average_surplus * 100,0))
 
     return results
 

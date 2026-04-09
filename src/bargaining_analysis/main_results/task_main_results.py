@@ -10,6 +10,9 @@ from src.bargaining_analysis.main_results.predictions_low_region import compare_
 
 from src.bargaining_analysis.main_results.predictions_high_region_t4 import inject_values_t4_high_valuation_region, plot_offer_convergence_t4_high_region
 
+from src.bargaining_analysis.main_results.intermediate_region_t4 import inject_values_t4_middle_region, predicted_delay, table_deal_price_by_val_bin_t4
+
+from src.bargaining_analysis.main_results.information_rents import plot_buyer_surplus_share
 
 from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates, compute_metrics_buyer_only_table
 
@@ -71,12 +74,27 @@ def task_inject_values_t4_high_valuation_region(
     results = inject_values_t4_high_valuation_region(df)
     inject_values(OVERLEAF_ROOT / "main.tex", **results)
 
+def task_inject_values_t4_middle_region(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = inject_values_t4_middle_region(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
 
 
 #--------------------------------------------------------------
 # Tables
 #--------------------------------------------------------------
 
+def task_table_deal_price_by_val_bin_t4(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        out_path = OVERLEAF_TABLES / "deal_price_by_val_bin_t4.tex"
+):
+    df = pd.read_csv(BLD / "data" / "merged_data_full_excluded.csv")
+    tex = table_deal_price_by_val_bin_t4(df=df)
+    out_path = OVERLEAF_TABLES / "deal_price_by_val_bin_t4.tex"
+    out_path.write_text(tex)
 
 def task_make_table_buyer_only(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -170,6 +188,15 @@ def task_run_signaling_regressions(
 #--------------------------------------------------------------
 # Plots
 #--------------------------------------------------------------
+
+def task_plot_buyer_surplus_share_by_treatment(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "buyer_surplus_share_by_treatment.pdf"
+): 
+    
+    df = pd.read_csv(depends_on)
+    plot = plot_buyer_surplus_share(df)
+    plot.savefig(produces)
 
 
 def task_plot_offer_convergence_t4_high_region(

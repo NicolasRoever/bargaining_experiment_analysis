@@ -4,6 +4,8 @@ from pathlib import Path
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+import statsmodels.formula.api as smf
+from scipy import stats
 
 def fix_pandas_append_error():
           #Fix pandas append error
@@ -14,6 +16,36 @@ def fix_pandas_append_error():
                             sort=sort)
         pd.DataFrame.append = _append
 
+def _ols_row(label, y_col, data, groups_col, h0_slope):
+        mod = smf.ols(f"{y_col} ~ valuation", data=data).fit(
+            cov_type="cluster", cov_kwds={"groups": data[groups_col]}
+        )
+        sl = mod.params["valuation"]
+        se = mod.bse["valuation"]
+        ic = mod.params["Intercept"]
+        p  = mod.pvalues["valuation"]
+        # One-sided t-test: slope < h0_slope
+        t_vs_h0 = (sl - h0_slope) / se
+        p_vs_h0 = stats.t.cdf(t_vs_h0, df=mod.df_resid)   # p(slope < h0)
+        print(f"  {label}")
+        print(f"    Intercept = {ic:+.3f}")
+        print(f"    Slope     = {sl:+.4f}   SE = {se:.4f}   p(≠0) = {p:.4f} {_stars(p)}")
+        print(f"    H0: slope = {h0_slope}  →  t = {t_vs_h0:+.3f},  "
+              f"p(slope < {h0_slope}) = {p_vs_h0:.4f} {_stars(p_vs_h0)}")
+        print(f"    R² = {mod.rsquared:.4f}")
+        return sl, se, p, p_vs_h0
+
+def _clustered_mean_test(series, groups, h0_mean=0.0):
+    """OLS series ~ 1, clustered SEs. Returns (mean, se, t, p)."""
+    d = pd.DataFrame({"y": series, "g": groups}).dropna()
+    mod = smf.ols("y ~ 1", data=d).fit(
+        cov_type="cluster", cov_kwds={"groups": d["g"]}
+    )
+    coef = mod.params["Intercept"]
+    se   = mod.bse["Intercept"]
+    t    = (coef - h0_mean) / se
+    p    = 2 * (1 - stats.t.cdf(abs(t), df=mod.df_resid))
+    return coef, se, t, p
 
 def inject_values(tex_path: Path, **variables):
     """
