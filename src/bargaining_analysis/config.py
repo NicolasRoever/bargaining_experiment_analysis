@@ -10,6 +10,7 @@ ROOT = SRC.joinpath("..", "..").resolve()
 
 OVERLEAF_FIGURES = ROOT.joinpath("overleaf-docs", "figures", "autom_figures").resolve()
 OVERLEAF_TABLES = ROOT.joinpath("overleaf-docs", "tables", "autom_tables").resolve()
+OVERLEAF_ROOT = ROOT.joinpath("overleaf-docs").resolve()
 
 BLD = ROOT.joinpath("bld").resolve()
 

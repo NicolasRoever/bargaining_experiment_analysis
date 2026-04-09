@@ -111,3 +111,53 @@ def inject_values_t4_high_valuation_region(df, CUTOFF=21.40, PRED_PRICE=10.70):
         sd_first_seller_offer_price_high_region_t4 = f"{sd_fo_seller:.0f}",
         mean_number_of_offers_high_region_t4 = f"{mean_n_offers:.2f}",
     )
+
+
+def plot_offer_convergence_t4_high_region(df, figsize=(11, 5), PRED_PRICE=10.70, CUTOFF=21.40):
+    """Box plot of seller opening offer, deal price, and buyer opening offer for
+    successful trades in the high-valuation region.
+
+    Shows that despite the initial spread between opening positions, the deal
+    price converges near the equilibrium prediction of 10.70.
+    """
+
+    merged, high, other = _prepare(df, CUTOFF)
+    set_plot_theme()
+
+    trades = high[high["agreement_dummy"] == 1].copy()
+
+    long = pd.concat([
+        trades[["offer_1_seller"]].rename(columns={"offer_1_seller": "price"}).assign(
+            stage="Seller Opening Offer"
+        ),
+        trades[["deal_price"]].rename(columns={"deal_price": "price"}).assign(
+            stage="Deal Price"
+        ),
+        trades[["offer_1_buyer"]].rename(columns={"offer_1_buyer": "price"}).assign(
+            stage="Buyer Opening Offer"
+        ),
+    ], ignore_index=True)
+
+    order = ["Seller Opening Offer", "Deal Price", "Buyer Opening Offer"]
+    palette = {
+        "Seller Opening Offer": sns.color_palette()[0],
+        "Deal Price":           sns.color_palette()[2],
+        "Buyer Opening Offer":  sns.color_palette()[1],
+    }
+
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.boxplot(
+        data=long, x="stage", y="price", order=order, palette=palette,
+        width=0.5, flierprops=dict(marker="o", markersize=3, alpha=0.4), ax=ax,
+    )
+    ax.axhline(
+        PRED_PRICE, color="black", linestyle="--", linewidth=1.2,
+        label=r"Equilibrium $p^* = 10.70$",
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel(r"Price")
+    ax.legend()
+
+    finalize_plot(ax=ax)
+    plt.close()
+    return fig

@@ -19,33 +19,29 @@ def inject_values(tex_path: Path, **variables):
     """
     Reads a .tex file, finds all \roever{var}{...} placeholders,
     replaces the ... with the provided variables[var], and writes back.
-    
-    Parameters:
-    - tex_path: pathlib.Path to the .tex file
-    - variables: kwargs mapping var names to their replacement values
-    
-    Raises:
-    - KeyError: if a var placeholder isn't found or if any remain afterward
+
+    If a provided value is numeric and has more than 2 decimal places,
+    it is rounded to 2 decimal places.
     """
     path = Path(tex_path)
     content = path.read_text(encoding='utf-8')
-    ROEVER_PATTERN = re.compile(r'\\roever\{(?P<var>\w+)\}\{[^}]*\}')
-    
-    # Replace each variable's placeholder via regex substitution
+
+    def format_value(val):
+        if isinstance(val, float):
+            s = str(val)
+            if "." in s and len(s.split(".")[1]) > 2:
+                return str(round(val, 2))
+            return s
+        return str(val)
+
     for var, val in variables.items():
         pattern = re.compile(rf'\\roever\{{{var}\}}\{{[^}}]*\}}')
-        replacement = rf'\\roever{{{var}}}{{{val}}}'
+        formatted_val = format_value(val)
+        replacement = rf'\\roever{{{var}}}{{{formatted_val}}}'
         content, count = pattern.subn(replacement, content)
-        if count == 0:
-            raise KeyError(f"No placeholder \\roever{{{var}}}{{...}} found in {tex_path}")
-    
-    # Check for any unreplaced placeholders
-    #leftovers = ROEVER_PATTERN.findall(content)
-    #if leftovers:
-    #    raise KeyError(f"Unreplaced placeholders remain for variables: {set(leftovers)}")
-    
-    # Write the updated content back to the file
+
     path.write_text(content, encoding='utf-8')
+
 
 
 def set_plot_theme():

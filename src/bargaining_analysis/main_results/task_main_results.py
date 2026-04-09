@@ -8,7 +8,7 @@ from src.bargaining_analysis.main_results.overall_equilibrium_pred import test_r
 
 from src.bargaining_analysis.main_results.predictions_low_region import compare_termination_rates_low_rest, plot_valuation_vs_buyer_offers, payoff_for_trades_in_low_region,  timing_data_t4
 
-from src.bargaining_analysis.main_results.predictions_high_region_t4 import inject_values_t4_high_valuation_region
+from src.bargaining_analysis.main_results.predictions_high_region_t4 import inject_values_t4_high_valuation_region, plot_offer_convergence_t4_high_region
 
 
 from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates, compute_metrics_buyer_only_table
@@ -171,6 +171,14 @@ def task_run_signaling_regressions(
 # Plots
 #--------------------------------------------------------------
 
+
+def task_plot_offer_convergence_t4_high_region(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "offer_convergence_t4_high_region.pdf"):
+    
+    df = pd.read_csv(depends_on)
+    plot = plot_offer_convergence_t4_high_region(df)
+    plot.savefig(produces)
 
 def task_plot_density_of_split_by_gft_exclusions_symcost(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
