@@ -4,15 +4,73 @@ from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_
 
 from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers, run_signaling_regressions, run_information_efficiency_regression, bargaining_power_regressions
 
+from src.bargaining_analysis.main_results.overall_equilibrium_pred import test_residuals_model_actual, test_ols_prediction_actual
+
+from src.bargaining_analysis.main_results.predictions_low_region import compare_termination_rates_low_rest, plot_valuation_vs_buyer_offers, payoff_for_trades_in_low_region,  timing_data_t4
+
+from src.bargaining_analysis.main_results.predictions_high_region_t4 import inject_values_t4_high_valuation_region
+
 
 from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates, compute_metrics_buyer_only_table
 
-from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, COLOR_SCHEME, OVERLEAF_TABLES, VARLABELS_REGRESSION, LEGEND_ELEMENTS_OUTCOME
+from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, COLOR_SCHEME, OVERLEAF_TABLES, VARLABELS_REGRESSION, LEGEND_ELEMENTS_OUTCOME, OVERLEAF_ROOT
 from src.bargaining_analysis.main_results.descriptive_actions_table import calculate_bargaining_actions_values
+
+
 from src.bargaining_analysis.helper import inject_values
 import pandas as pd
 import matplotlib.pyplot as plt
 from pytask import task
+
+
+#--------------------------------------------------------------
+# Inject Values
+#--------------------------------------------------------------
+
+def task_inject_residuals_values(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+): 
+    
+    df = pd.read_csv(depends_on)
+    results = test_residuals_model_actual(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
+def task_inject_ols_prediction_values(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = test_ols_prediction_actual(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
+
+def task_inject_termination_rate_comparison(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = compare_termination_rates_low_rest(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
+def task_inject_payoff_for_trades_in_low_region(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = payoff_for_trades_in_low_region(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+    
+def task_inject_timing_data_t4(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = timing_data_t4(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
+def task_inject_values_t4_high_valuation_region(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = inject_values_t4_high_valuation_region(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
 
 
 #--------------------------------------------------------------
@@ -374,6 +432,15 @@ def task_plot_mean_payoff_t3t4(
 ):
     df = pd.read_csv(depends_on)
     plot = plot_mean_payoff_t3t4(df)
+    plot.savefig(produces)
+
+def task_plot_valuation_vs_buyer_offers(
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+    produces = OVERLEAF_FIGURES / "valuation_vs_buyer_offers_t3.pdf"
+): 
+    
+    df = pd.read_csv(depends_on)
+    plot = plot_valuation_vs_buyer_offers(df)
     plot.savefig(produces)
 
 
