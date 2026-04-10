@@ -131,7 +131,7 @@ def plot_risk_elicitation_choices(df):
     risk_counts = (
         df_round33["risk_elicitation_choice"]
         .value_counts()
-        .reindex(range(1, 7), fill_value=0)
+        .reindex(range(-1, -7, -1), fill_value=0)
     )
 
     # Create figure & axes

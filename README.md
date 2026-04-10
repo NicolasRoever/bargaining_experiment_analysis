@@ -15,7 +15,7 @@ cd overleaf-docs
 git add .
 git commit -m "Update"
 git pull
-git push   
+git push origin HEAD:master
 cd ..       
 ```
 
@@ -33,6 +33,7 @@ cd ..
 - Check how you adjusted times more thoroughly!
 - Participant with label 72TouSYb still has weird first offer times. We need to fix this somehow!
 - dwjn1hbc has negative first offer time, should exclude him as well
+- plot_mean_payoff_t3t4: This function seems to contradict me :)
 
 
 ### Errata
