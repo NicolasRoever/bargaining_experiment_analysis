@@ -14,7 +14,7 @@ def equilibrium_payoff(x, c=0.05, r=0.01):
     if x <= 7.72:
         return 0
     elif x >= 21.40:
-        return x/2
+        return x - 10.70
     else:
         b = x
         return ((r*b + 2*c)/(r*21.40 + 2*c)) * (b/2 + c/r) - c/r
@@ -48,7 +48,7 @@ def plot_buyer_payoff_vs_valuation(
     # Assign color values based on the outcome
     colors = df_buyers['bargaining_outcome'].map(outcome_color_map)
 
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=(12, 8))
      
     # Add the scatter plot with custom colors
     scatter = plt.scatter(

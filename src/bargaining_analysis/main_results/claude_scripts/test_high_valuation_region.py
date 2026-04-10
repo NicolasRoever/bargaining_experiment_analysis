@@ -19,8 +19,8 @@ import seaborn as sns
 from scipy import stats
 from statsmodels.stats.proportion import proportions_ztest
 import statsmodels.formula.api as smf
-from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES
-from src.bargaining_analysis.helper import finalize_plot, set_plot_theme
+from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, OVERLEAF_ROOT
+from src.bargaining_analysis.helper import finalize_plot, set_plot_theme, inject_values
 
 CUTOFF      = 21.40
 PRED_PRICE  = 10.70     # predicted deal price
@@ -73,13 +73,14 @@ def _prepare(df):
     buyers  = t4[t4["participant_role"] == "Buyer"].copy()
     sellers = t4[t4["participant_role"] == "Seller"][
         ["negotiation_id", "offer_1", "offer_time_1", "number_of_offers",
-         "first_offer", "participant_code"]
+         "first_offer", "participant_code", "payoff"]
     ].rename(columns={
         "offer_1":           "offer_1_seller",
         "offer_time_1":      "offer_time_1_seller",
         "number_of_offers":  "number_of_offers_seller",
         "first_offer":       "first_offer_seller",
         "participant_code":  "seller_code",
+        "payoff":            "seller_payoff",
     })
     merged = buyers.merge(sellers, on="negotiation_id", how="left")
     merged["total_offers"] = (
@@ -405,6 +406,76 @@ def test7_unexpected_terminations(high):
     print(f"  Verdict: INCONSISTENT  ({n} terminations, {n/len(high):.1%} of negotiations)")
 
 
+# ─── Test 8: Surplus split ───────────────────────────────────────────────────
+
+def test8_surplus_split(high):
+    _header("TEST 8 | Surplus Split  (theory: buyer share = (val - 10.70) / val)")
+
+    trades = high[high["agreement_dummy"] == 1].copy()
+    trades = trades.dropna(subset=["payoff", "seller_payoff"])
+    trades["total_surplus"] = trades["payoff"] + trades["seller_payoff"]
+
+    # Drop cases where total surplus is zero or negative
+    trades = trades[trades["total_surplus"] > 0].copy()
+    n = len(trades)
+
+    trades["buyer_share"]  = trades["payoff"]         / trades["total_surplus"]
+    trades["seller_share"] = trades["seller_payoff"]  / trades["total_surplus"]
+
+    mean_buyer_share  = trades["buyer_share"].mean()
+    mean_seller_share = trades["seller_share"].mean()
+    mean_buyer_payoff  = trades["payoff"].mean()
+    mean_seller_payoff = trades["seller_payoff"].mean()
+
+    print(f"\n  Trades with positive surplus: {n}")
+    print(f"\n  {'Statistic':<35}  {'Buyer':>10}  {'Seller':>10}")
+    print(f"  {'-'*58}")
+    print(f"  {'Mean payoff':<35}  {mean_buyer_payoff:>10.3f}  {mean_seller_payoff:>10.3f}")
+    print(f"  {'Mean share of total surplus':<35}  {mean_buyer_share:>10.3f}  {mean_seller_share:>10.3f}")
+
+    # Test H0: buyer share = 0.5 (equal split), clustered SEs
+    m, se, t, p_eq = _clustered_mean_test(
+        trades["buyer_share"], trades["participant_code"], h0_mean=0.5
+    )
+    print(f"\n  H0: buyer share = 0.5 (equal split)")
+    print(f"    t = {t:+.3f}   SE (clustered) = {se:.4f}   p = {p_eq:.4f} {_stars(p_eq)}")
+    print(f"  Verdict: buyer share {'> 0.5' if mean_buyer_share > 0.5 else '< 0.5'}  "
+          f"({'significantly' if p_eq < 0.05 else 'not significantly'} different from equal split)")
+
+    # Direct test H0: buyer payoff = seller payoff  (i.e. difference = 0)
+    trades["payoff_diff"] = trades["payoff"] - trades["seller_payoff"]
+    m_diff, se_diff, t_diff, p_diff = _clustered_mean_test(
+        trades["payoff_diff"], trades["participant_code"], h0_mean=0.0
+    )
+    print(f"\n  H0: buyer payoff - seller payoff = 0")
+    print(f"    Mean difference = {m_diff:+.3f}   SE = {se_diff:.3f}   "
+          f"t = {t_diff:+.3f}   p = {p_diff:.4f} {_stars(p_diff)}")
+    direction = "more" if m_diff > 0 else "less"
+    print(f"  Buyer extracts {direction} surplus than seller "
+          f"({'significantly' if p_diff < 0.05 else 'not significantly'}).")
+
+    # Theory: buyer share = (val - PRED_PRICE) / val; check slope of buyer_share on valuation
+    mod = smf.ols("buyer_share ~ valuation", data=trades).fit(
+        cov_type="cluster", cov_kwds={"groups": trades["participant_code"]}
+    )
+    sl   = mod.params["valuation"]
+    se_s = mod.bse["valuation"]
+    p_s  = mod.pvalues["valuation"]
+    print(f"\n  OLS buyer_share ~ valuation (theory: share rises with valuation):")
+    print(f"    slope = {sl:+.4f}   SE = {se_s:.4f}   p = {p_s:.4f} {_stars(p_s)}")
+
+    # Breakdown by valuation bucket
+    print(f"\n  Surplus shares by valuation bucket:")
+    print(f"  {'Bucket':<16}  {'N':>5}  {'Buyer share':>12}  {'Seller share':>13}  {'Mean diff':>10}")
+    print(f"  {'-'*62}")
+    bins   = [21, 24, 27, 30.1]
+    labels = ["[21, 24)", "[24, 27)", "[27, 30]"]
+    trades["val_bin"] = pd.cut(trades["valuation"], bins=bins, labels=labels, right=False)
+    for lbl, grp in trades.groupby("val_bin", observed=True):
+        print(f"  {str(lbl):<16}  {len(grp):>5}  {grp['buyer_share'].mean():>12.3f}  "
+              f"{grp['seller_share'].mean():>13.3f}  {grp['payoff_diff'].mean():>10.3f}")
+
+
 # ─── Summary ──────────────────────────────────────────────────────────────────
 
 def print_summary(high):
@@ -521,6 +592,7 @@ def run_all_tests(df):
     test5_first_mover(high)
     test6_seller_first_offer(high)
     test7_unexpected_terminations(high)
+    test8_surplus_split(high)
     print_summary(high)
 
     print("\n" + "=" * 72)
@@ -530,8 +602,81 @@ def run_all_tests(df):
     return high
 
 
+# ─── Inject values for "Sellers in High Region" subsection ───────────────────
+
+def inject_values_surplus_split_high_t4(df):
+    """
+    Compute inject-ready statistics for the 'Sellers in High Region' subsection.
+
+    Keys returned (all strings, ready for \\roever{}{}):
+      average_buyer_share_high_t4               – mean buyer % of surplus
+      p_value_buyer_share_equal_split_high_t4   – H0: buyer share = 0.5
+      corr_seller_first_offer_val_high_t4       – Spearman ρ (seller offer, buyer val)
+      p_corr_seller_first_offer_val_high_t4     – p-value for ρ
+      slope_price_val_high_t4                   – OLS slope deal_price ~ valuation
+      p_slope_price_val_high_t4                 – p-value for that slope
+      mean_seller_payoff_high_t4                – mean seller payoff across trades
+      slope_seller_payoff_val_high_t4           – OLS slope seller_payoff ~ valuation
+      p_slope_seller_payoff_val_high_t4         – p-value for seller payoff slope
+    """
+    _, high, _ = _prepare(df)
+    trades = high[high["agreement_dummy"] == 1].copy()
+    trades = trades.dropna(subset=["payoff", "seller_payoff"])
+    trades["total_surplus"] = trades["payoff"] + trades["seller_payoff"]
+    trades = trades[trades["total_surplus"] > 0].copy()
+    trades["buyer_share"] = trades["payoff"] / trades["total_surplus"]
+
+    # Buyer surplus share and test vs equal split
+    avg_buyer_share = trades["buyer_share"].mean()
+    _, _, _, p_share = _clustered_mean_test(
+        trades["buyer_share"], trades["participant_code"], h0_mean=0.5
+    )
+
+    # Spearman correlation and OLS slope: seller's opening offer vs buyer valuation
+    # Use all high-region negotiations where seller made a first offer (not just trades)
+    # to avoid conditioning on the outcome.
+    with_offer = high.dropna(subset=["offer_1_seller"])
+    rho, p_rho = stats.spearmanr(with_offer["valuation"], with_offer["offer_1_seller"])
+    mod_fo = smf.ols("offer_1_seller ~ valuation", data=with_offer).fit(
+        cov_type="cluster", cov_kwds={"groups": with_offer["seller_code"]}
+    )
+    slope_seller_fo   = mod_fo.params["valuation"]
+    p_slope_seller_fo = mod_fo.pvalues["valuation"]
+
+    # Slope of deal price on valuation (H0: slope = 0)
+    mod_price = smf.ols("deal_price ~ valuation", data=trades).fit(
+        cov_type="cluster", cov_kwds={"groups": trades["participant_code"]}
+    )
+    slope_price   = mod_price.params["valuation"]
+    p_slope_price = mod_price.pvalues["valuation"]
+
+    # Seller payoff: mean and slope on valuation
+    mean_seller_payoff = trades["seller_payoff"].mean()
+    mod_seller = smf.ols("seller_payoff ~ valuation", data=trades).fit(
+        cov_type="cluster", cov_kwds={"groups": trades["participant_code"]}
+    )
+    slope_seller_payoff   = mod_seller.params["valuation"]
+    p_slope_seller_payoff = mod_seller.pvalues["valuation"]
+
+    return dict(
+        average_buyer_share_high_t4=f"{avg_buyer_share * 100:.0f}",
+        p_value_buyer_share_equal_split_high_t4=f"{p_share:.3f}",
+        corr_seller_first_offer_val_high_t4=f"{rho:.2f}",
+        p_corr_seller_first_offer_val_high_t4=f"{p_rho:.2f}",
+        slope_seller_first_offer_val_high_t4=f"{slope_seller_fo:.3f}",
+        p_slope_seller_first_offer_val_high_t4=f"{p_slope_seller_fo:.3f}",
+        slope_price_val_high_t4=f"{slope_price:.2f}",
+        p_slope_price_val_high_t4=f"{p_slope_price:.3f}",
+        mean_seller_payoff_high_t4=f"{mean_seller_payoff:.2f}",
+        slope_seller_payoff_val_high_t4=f"{slope_seller_payoff:.3f}",
+        p_slope_seller_payoff_val_high_t4=f"{p_slope_seller_payoff:.3f}",
+    )
+
+
 if __name__ == "__main__":
     df = pd.read_csv(BLD / "data" / "merged_data_full_excluded.csv")
     high = run_all_tests(df)
     fig = plot_offer_convergence(high)
     fig.savefig(OVERLEAF_FIGURES / "high_val_offer_convergence.pdf")
+    values = inject_values_surplus_split_high_t4(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **values)

@@ -24,13 +24,16 @@ def _prepare(df, CUTOFF=21.40):
     buyers  = t4[t4["participant_role"] == "Buyer"].copy()
     sellers = t4[t4["participant_role"] == "Seller"][
         ["negotiation_id", "offer_1", "offer_time_1", "number_of_offers",
-         "first_offer", "participant_code"]
+         "first_offer", "participant_code", "split_gains_from_trade", "payoff"]
     ].rename(columns={
         "offer_1":           "offer_1_seller",
         "offer_time_1":      "offer_time_1_seller",
         "number_of_offers":  "number_of_offers_seller",
         "first_offer":       "first_offer_seller",
         "participant_code":  "seller_code",
+        "split_gains_from_trade": "seller_split_gains_from_trade",
+        "payoff":            "seller_payoff"
+
     })
     merged = buyers.merge(sellers, on="negotiation_id", how="left")
     merged["total_offers"] = (
@@ -84,6 +87,16 @@ def inject_values_t4_high_valuation_region(df, CUTOFF=21.40, PRED_PRICE=10.70):
         trades["deal_price"], trades["participant_code"], h0_mean=PRED_PRICE
     )
 
+    #Mean Shares
+    trades["buyer_share"]  = trades["split_gains_from_trade"]
+    trades["seller_share"] = 1- trades["buyer_share"]
+
+    mean_buyer_share  = trades["buyer_share"].mean()
+    mean_seller_share = trades["seller_share"].mean()
+    m, se, t, p_equality_share = _clustered_mean_test(
+        trades["buyer_share"], trades["participant_code"], h0_mean=0.5
+    )
+
     #Who moves first?
     all_n   = len(high)
     trades  = high[high["agreement_dummy"] == 1]
@@ -110,7 +123,81 @@ def inject_values_t4_high_valuation_region(df, CUTOFF=21.40, PRED_PRICE=10.70):
         first_seller_offer_price_high_region_t4 = f"{mean_fo_seller:.0f}",
         sd_first_seller_offer_price_high_region_t4 = f"{sd_fo_seller:.0f}",
         mean_number_of_offers_high_region_t4 = f"{mean_n_offers:.2f}",
+        mean_buyer_share_high_region_t4 = f"{mean_buyer_share * 100:.0f}",
+        mean_seller_share_high_region_t4 = f"{mean_seller_share * 100:.0f}",
+        p_value_clustered_t_test_equality_shares_high_region_t4 = f"{p_equality_share:.3f}",
     )
+
+
+def inject_values_surplus_split_high_t4(df):
+    """
+    Compute inject-ready statistics for the 'Sellers in High Region' subsection.
+
+    Keys returned (all strings, ready for \\roever{}{}):
+      average_buyer_share_high_t4               – mean buyer % of surplus
+      p_value_buyer_share_equal_split_high_t4   – H0: buyer share = 0.5
+      corr_seller_first_offer_val_high_t4       – Spearman ρ (seller offer, buyer val)
+      p_corr_seller_first_offer_val_high_t4     – p-value for ρ
+      slope_price_val_high_t4                   – OLS slope deal_price ~ valuation
+      p_slope_price_val_high_t4                 – p-value for that slope
+      mean_seller_payoff_high_t4                – mean seller payoff across trades
+      slope_seller_payoff_val_high_t4           – OLS slope seller_payoff ~ valuation
+      p_slope_seller_payoff_val_high_t4         – p-value for seller payoff slope
+    """
+    _, high, _ = _prepare(df)
+    trades = high[high["agreement_dummy"] == 1].copy()
+    trades["buyer_share"] = trades["split_gains_from_trade"]
+    trades["seller_share"] = 1 - trades["buyer_share"]
+
+    # Buyer surplus share and test vs equal split
+    avg_buyer_share = trades["buyer_share"].mean()
+    _, _, _, p_share = _clustered_mean_test(
+        trades["buyer_share"], trades["participant_code"], h0_mean=0.5
+    )
+
+    # Spearman correlation and OLS slope: seller's opening offer vs buyer valuation
+    # Use all high-region negotiations where seller made a first offer (not just trades)
+    # to avoid conditioning on the outcome.
+    with_offer = high.dropna(subset=["offer_1_seller"])
+    rho, p_rho = stats.spearmanr(with_offer["valuation"], with_offer["offer_1_seller"])
+    mod_fo = smf.ols("offer_1_seller ~ valuation", data=with_offer).fit(
+        cov_type="cluster", cov_kwds={"groups": with_offer["seller_code"]}
+    )
+    slope_seller_fo   = mod_fo.params["valuation"]
+    p_slope_seller_fo = mod_fo.pvalues["valuation"]
+
+    # Slope of deal price on valuation (H0: slope = 0)
+    mod_price = smf.ols("deal_price ~ valuation", data=trades).fit(
+        cov_type="cluster", cov_kwds={"groups": trades["participant_code"]}
+    )
+    slope_price   = mod_price.params["valuation"]
+    p_slope_price = mod_price.pvalues["valuation"]
+
+    # Seller payoff: mean and slope on valuation
+    mean_seller_payoff = trades["seller_payoff"].mean()
+    mod_seller = smf.ols("seller_payoff ~ valuation", data=trades).fit(
+        cov_type="cluster", cov_kwds={"groups": trades["participant_code"]}
+    )
+    slope_seller_payoff   = mod_seller.params["valuation"]
+    p_slope_seller_payoff = mod_seller.pvalues["valuation"]
+    t_slope_seller_payoff_lt_05 = (slope_seller_payoff - 0.5) / mod_seller.bse["valuation"]
+    p_slope_seller_payoff_lt_05 = stats.t.cdf(t_slope_seller_payoff_lt_05, df=mod_seller.df_resid)
+
+    return dict(
+        average_buyer_share_high_t4=f"{avg_buyer_share * 100:.0f}",
+        p_value_buyer_share_equal_split_high_t4=f"{p_share:.3f}",
+        corr_seller_first_offer_val_high_t4=f"{rho:.2f}",
+        p_corr_seller_first_offer_val_high_t4=f"{p_rho:.2f}",
+        slope_seller_first_offer_val_high_t4=f"{slope_seller_fo:.3f}",
+        p_slope_seller_first_offer_val_high_t4=f"{p_slope_seller_fo:.3f}",
+        slope_price_val_high_t4=f"{slope_price:.2f}",
+        p_slope_price_val_high_t4=f"{p_slope_price:.3f}",
+        mean_seller_payoff_high_t4=f"{mean_seller_payoff:.2f}",
+        slope_seller_payoff_val_high_t4=f"{slope_seller_payoff:.3f}",
+        p_slope_seller_payoff_val_high_t4=f"{p_slope_seller_payoff:.3f}",
+        p_value_slope_seller_payoff_lt_05=f"{p_slope_seller_payoff_lt_05:.3f}",
+    )
+
 
 
 def plot_offer_convergence_t4_high_region(df, figsize=(11, 5), PRED_PRICE=10.70, CUTOFF=21.40):

@@ -51,7 +51,7 @@ def test_residuals_model_actual(df):
 
     results = _run_ttest("All T4 buyers", df["residual"])
 
-    results.update(residuals_fraction_surplus=round(df["residual"].mean() / average_surplus * 100,0))
+    results.update(residuals_fraction_surplus=round(df["residual"].mean() / average_surplus * 100 * (-1),0))
 
     return results
 
@@ -86,6 +86,64 @@ def test_ols_prediction_actual(df):
     )
 
     return results
+
+
+def plot_split_gains_valuation_t4_middle_high(
+    df, figsize=(9, 5), jitter_x_sd=0.08, jitter_y_sd=0.01, jitter_seed=42
+):
+    """
+    Scatter plot of split_gains_from_trade vs. buyer valuation for T4 trade
+    observations, overlaid with an OLS regression line and 95% CI band.
+
+    Returns the figure.
+    """
+    df_buyers = df[
+        (df["treatment"] == "T4") &
+        (df["participant_role"] == "Buyer") &
+        (df["valuation"] > 7.72) 
+    ].copy()
+
+    df = df_buyers[df_buyers["bargaining_outcome"] == "acceptance"].dropna(
+        subset=["split_gains_from_trade", "valuation"]
+    ).copy()
+
+    model = smf.ols("split_gains_from_trade ~ valuation", data=df).fit(cov_type="HC3")
+
+    x_grid = np.linspace(df["valuation"].min(), df["valuation"].max(), 300)
+    pred = model.get_prediction({"valuation": x_grid})
+    pred_df = pred.summary_frame(alpha=0.05)
+
+    # Jitter is used only for plotting to reduce overlap of observations.
+    rng = np.random.default_rng(jitter_seed)
+    x_plot = df["valuation"] + rng.normal(0, jitter_x_sd, size=len(df))
+    y_plot = np.clip(
+        df["split_gains_from_trade"] + rng.normal(0, jitter_y_sd, size=len(df)),
+        0,
+        1,
+    )
+
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=figsize)
+
+    ax.scatter(
+        x_plot, y_plot,
+        color=COLOR_SCHEME[0], alpha=0.45, s=22, zorder=2,
+        label="Observed (trade, jittered)"
+    )
+    ax.plot(x_grid, pred_df["mean"], color=COLOR_SCHEME[1], linewidth=2.0,
+            label=f"OLS fit (slope={model.params['valuation']:+.3f}, "
+                  f"p={model.pvalues['valuation']:.3f})", zorder=3)
+    ax.fill_between(
+        x_grid, pred_df["mean_ci_lower"], pred_df["mean_ci_upper"],
+        color=COLOR_SCHEME[1], alpha=0.15, zorder=1, label="95\\% CI"
+    )
+
+    ax.set_xlabel("Buyer Valuation")
+    ax.set_ylabel("Split of Gains from Trade (Buyer Share)")
+    ax.legend(fontsize=9, frameon=True, facecolor="white", edgecolor="black")
+
+    finalize_plot(ax)
+    return fig
 
 
 

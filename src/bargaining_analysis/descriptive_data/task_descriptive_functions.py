@@ -16,6 +16,7 @@ def task_plot_bargaining_rounds(
     negotiation_ids = [80, 401, 606, 1006]
     fig = plot_bargaining_rounds_by_id(df, negotiation_ids, max_offers=10)
     plt.savefig(produces)
+    plt.close()
 
 
 def task_plot_gains_from_trade_histogram_two_sided(
@@ -25,6 +26,7 @@ def task_plot_gains_from_trade_histogram_two_sided(
     df = pd.read_csv(depends_on)
     plot_gains_from_trade_histogram_two_sided(df)
     plt.savefig(produces)
+    plt.close()
 
 def task_plot_comp_term_times(
     depends_on=SRC / "data" / "environment_data" / "termination_times_low_prob.pkl",
@@ -40,6 +42,7 @@ def task_plot_comp_term_times(
     sns.despine()
     
     plt.savefig(produces)
+    plt.close()
 
 
 def task_plot_buyer_vals_onesided(
@@ -60,6 +63,7 @@ def task_plot_buyer_vals_onesided(
     sns.despine()
     
     plt.savefig(produces)
+    plt.close()
 
 
 def task_plot_buyer_vals_twosided(
@@ -87,6 +91,7 @@ def task_plot_buyer_vals_twosided(
     sns.despine()
     
     plt.savefig(produces)
+    plt.close()
 
 
 def task_write_descriptive_table(
@@ -131,6 +136,7 @@ def task_plot_time_preference_switching_points(
     one_sided = pd.read_csv(depends_on)
     plot_time_preference_switching_points(one_sided)
     plt.savefig(produces)
+    plt.close()
 
 
 def task_plot_ultimatum_offer_histogram(
@@ -141,6 +147,7 @@ def task_plot_ultimatum_offer_histogram(
     one_sided = pd.read_csv(depends_on)
     plot_ultimatum_offer_histogram(one_sided)
     plt.savefig(produces)
+    plt.close()
 
 
 def task_plot_risk_elicitation_choices(
@@ -151,6 +158,7 @@ def task_plot_risk_elicitation_choices(
     one_sided = pd.read_csv(depends_on)
     plot_risk_elicitation_choices(one_sided)
     plt.savefig(produces)
+    plt.close()
 
 
         

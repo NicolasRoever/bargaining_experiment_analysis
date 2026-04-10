@@ -32,7 +32,7 @@ def equilibrium_payoff(x, c=0.05, r=0.01):
     if x <= B_DAGGER:
         return 0
     elif x >= B_STAR:
-        return x / 2
+        return x - 10.7
     else:
         b = x
         return ((r * b + 2 * c) / (r * B_STAR + 2 * c)) * (b / 2 + c / r) - c / r
@@ -372,6 +372,87 @@ def plot_breakpoint_comparison(df_buyers, figsize=(10, 6)):
     return fig
 
 
+# ─── Test 5: Split gains from trade vs. valuation (trade occurs only) ─────────
+
+def test_split_gains_valuation(df_buyers):
+    """
+    OLS regression of split_gains_from_trade on valuation for T4 buyers
+    where trade occurs (bargaining_outcome == 'acceptance').
+
+    Tests whether buyers with higher valuations systematically receive a
+    different share of the gains from trade.
+    """
+    _header("TEST 5: Split Gains from Trade ~ Valuation  (trade observations only)")
+
+    df = df_buyers[df_buyers["bargaining_outcome"] == "acceptance"].dropna(
+        subset=["split_gains_from_trade", "valuation"]
+    ).copy()
+
+    print(f"\n  Subsample: T4 buyers who traded  (n = {len(df)})")
+    print(f"  split_gains_from_trade  mean={df['split_gains_from_trade'].mean():.4f}  "
+          f"std={df['split_gains_from_trade'].std():.4f}")
+
+    model = smf.ols("split_gains_from_trade ~ valuation", data=df).fit(cov_type="HC3")
+    print(model.summary().tables[1])
+    print(f"\n  R²  = {model.rsquared:.4f}   (adj. R² = {model.rsquared_adj:.4f})")
+
+    # t-test: slope = 0
+    slope_t   = model.tvalues["valuation"]
+    slope_p   = model.pvalues["valuation"]
+    slope_ci  = model.conf_int().loc["valuation"]
+    print(f"\n  Slope on valuation: {model.params['valuation']:+.4f}  "
+          f"t={slope_t:+.3f}  p={slope_p:.4f}  "
+          f"95% CI [{slope_ci[0]:+.4f}, {slope_ci[1]:+.4f}]")
+    if slope_p < 0.05:
+        print("  → Significant relationship at 5%: split varies systematically with valuation.")
+    else:
+        print("  → No significant relationship at 5%: split does not vary with valuation.")
+
+    return model
+
+
+def plot_split_gains_valuation(df_buyers, figsize=(9, 5)):
+    """
+    Scatter plot of split_gains_from_trade vs. buyer valuation for T4 trade
+    observations, overlaid with an OLS regression line and 95% CI band.
+
+    Returns the figure.
+    """
+    df = df_buyers[df_buyers["bargaining_outcome"] == "acceptance"].dropna(
+        subset=["split_gains_from_trade", "valuation"]
+    ).copy()
+
+    model = smf.ols("split_gains_from_trade ~ valuation", data=df).fit(cov_type="HC3")
+
+    x_grid = np.linspace(df["valuation"].min(), df["valuation"].max(), 300)
+    from statsmodels.sandbox.regression.predstd import wls_prediction_std
+    pred = model.get_prediction({"valuation": x_grid})
+    pred_df = pred.summary_frame(alpha=0.05)
+
+    set_plot_theme()
+    fig, ax = plt.subplots(figsize=figsize)
+
+    ax.scatter(
+        df["valuation"], df["split_gains_from_trade"],
+        color=COLOR_SCHEME[0], alpha=0.45, s=22, zorder=2,
+        label="Observed (trade)"
+    )
+    ax.plot(x_grid, pred_df["mean"], color=COLOR_SCHEME[1], linewidth=2.0,
+            label=f"OLS fit (slope={model.params['valuation']:+.3f}, "
+                  f"p={model.pvalues['valuation']:.3f})", zorder=3)
+    ax.fill_between(
+        x_grid, pred_df["mean_ci_lower"], pred_df["mean_ci_upper"],
+        color=COLOR_SCHEME[1], alpha=0.15, zorder=1, label="95\\% CI"
+    )
+
+    ax.set_xlabel("Buyer Valuation")
+    ax.set_ylabel("Split of Gains from Trade (Buyer Share)")
+    ax.legend(fontsize=9, frameon=True, facecolor="white", edgecolor="black")
+
+    finalize_plot(ax)
+    return fig
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def run_all_tests(df):
@@ -396,6 +477,7 @@ def run_all_tests(df):
     test_ols_prediction(df_with_residuals)
     test_structural_breaks(df_buyers)
     test_termination_discontinuity(df_buyers)
+    test_split_gains_valuation(df_buyers)
 
     print("\n" + "=" * 70)
     print("  Done.")
@@ -412,3 +494,8 @@ if __name__ == "__main__":
     out = OVERLEAF_FIGURES / "test3_breakpoint_comparison.pdf"
     fig.savefig(out, bbox_inches="tight")
     print(f"\n  Figure saved to: {out}")
+
+    fig5 = plot_split_gains_valuation(df_buyers)
+    out5 = OVERLEAF_FIGURES / "test5_split_gains_valuation.pdf"
+    fig5.savefig(out5, bbox_inches="tight")
+    print(f"\n  Figure saved to: {out5}")

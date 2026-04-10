@@ -395,7 +395,7 @@ def plot_bargaining_rounds(df_clean, round1, round2):
                 axes[round_idx, pair_idx].set_visible(False)
 
     plt.tight_layout()
-    plt.show()
+    return fig
 
 
 

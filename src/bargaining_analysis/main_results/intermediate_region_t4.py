@@ -77,17 +77,15 @@ def inject_values_t4_middle_region(df):
     rate_bf = bf / n_total
 
     #Correlation Offer Time Valuation
-    rho, p_rho = stats.spearmanr(
-        mid["valuation"].dropna(),
-        mid["offer_time_1"].reindex(mid["valuation"].dropna().index)
-    )
+    _corr_df = mid[["valuation", "offer_time_1"]].dropna()
+    rho, p_rho = stats.spearmanr(_corr_df["valuation"], _corr_df["offer_time_1"])
 
     #Share of surplus
     d = trades.copy()
-    d["total_surplus"] = d["payoff"] + d["seller_payoff"]
+    d["total_surplus"] = d["gains_from_trade"]
     # Drop cases where total surplus is zero or negative (division undefined / misleading)
     d = d[d["total_surplus"] > 0].copy()
-    d["buyer_share"] = d["payoff"] / d["total_surplus"]
+    d["buyer_share"] = d["split_gains_from_trade"] 
     n = len(d)
     average_buyer_share = d["buyer_share"].mean()
     average_seller_share = 1- average_buyer_share
@@ -96,9 +94,9 @@ def inject_values_t4_middle_region(df):
 
     # First seller offer
     seller_first = trades[trades["first_offer_seller"] == 1]
-    model = smf.ols(" offer_time_1_seller ~ valuation", data=seller_first).fit(cov_type="cluster", cov_kwds={"groups": seller_first["participant_code"]})
-    correlation_offer_time_valuation_mid_t4 = model.parameters["valuation"]
-    pval_valuation = model.pvalues["valuation"]
+    model = smf.ols(" offer_1_seller ~ valuation", data=seller_first).fit(cov_type="cluster", cov_kwds={"groups": seller_first["participant_code"]})
+    slope_seller1_valuation_mid_t4 = model.params["valuation"]
+    pval_valuation_seller = model.pvalues["valuation"]
 
     #Price Bargaining Mechanism
     sl_price, se_price, p_price, p_price_h0 = _ols_row(
@@ -109,15 +107,16 @@ def inject_values_t4_middle_region(df):
 
 
     return {
-        "rate_seller_first_offer": f"{rate_sf:.0f%}",
-        "rate_buyer_first_offer":  f"{rate_bf:.0f%}",
+        "rate_seller_first_offer": f"{rate_sf*100:.0f}",
+        "rate_buyer_first_offer":  f"{rate_bf*100:.0f}",
         "correlation_offer_time_valuation_mid_t4": f"{rho:.2f})", 
         "p_value_rho_mid_t4": f"{p_rho:.2f}", 
-        "average_seller_share_mid_t4": f"{average_seller_share:.0f%}",
+        "average_seller_share_mid_t4": f"{average_seller_share*100:.0f}",
         "p_value_mid_t4_share": f"{p_share_different_05_mid_t4:.2f}",
-        "p_value_valuation_first_seller_offer_mid_t4": f"{pval_valuation:.2f}", 
         "slope_price_valuation_mid_t4": f"{sl_price:.2f}",
         "slope_p_value_different_05": f"{p_price_h0:.2f}",
+        "slope_seller1_valuation_mid_t4": f"{slope_seller1_valuation_mid_t4:.2f}",
+        "p_value_valuation_seller_first_offer_mid_t4": f"{pval_valuation_seller:.2f}"
 
 
     }

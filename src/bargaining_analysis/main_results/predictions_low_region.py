@@ -47,26 +47,25 @@ def _prepare(df, CUTOFF= 7.72, BUYER_ID=1, SELLER_ID=2):
 
 def compare_termination_rates_low_rest(df):
 
-    merged, high, low = _prepare(df)
+    merged, low, high = _prepare(df)
  
     # Proportions
     n_low  = len(low);  term_low  = low["player_termination"].sum()
     n_high = len(high); term_high = high["player_termination"].sum()
     rate_low  = term_low  / n_low
     rate_high = term_high / n_high
-
     term = low[low["bargaining_outcome"] == "Player"].copy()
     n_total       = len(term)
     n_buyer_init  = (term["terminated_by_id_in_group"] == 2).sum()
 
     results = {
         "n_low_buyercost": n_low,
-        "fraction_low_buyercost": round(rate_low*100,0),
+        "fraction_low_buyercost": f"{rate_low*100:.0f}",
         "n_high_buyercost": n_high,
-        "fraction_high_buyercost": rate_high,
+        "fraction_high_buyercost": f"{rate_high*100:.0f}",
         "term_low_buyercost": term_low,
         "term_high_buyercost": term_high,
-        "fraction_buyer_terminations_buyercost": n_buyer_init / n_total 
+        "fraction_buyer_terminations_buyercost": f"{n_buyer_init / n_total * 100:.0f}"
     }
 
     return results
@@ -81,7 +80,7 @@ def payoff_for_trades_in_low_region(df):
     
 
 def timing_data_t4(df, CUTOFF = 7.72):
-    merged, high, low = _prepare(df)
+    merged, low, high = _prepare(df)
 
     return {
         "bargaining_time_low_t4": low["bargaining_time_full_sec"].mean(),

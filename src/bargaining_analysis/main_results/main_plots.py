@@ -67,7 +67,6 @@ def plot_cox_by_tacosts(
     new_labels = ["No TA Costs", "TA Costs"]
     ax.legend(handles, new_labels)
     finalize_plot(ax)
-    plt.show()
 
     return fig 
 

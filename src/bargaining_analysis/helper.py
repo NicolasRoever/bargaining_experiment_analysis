@@ -16,6 +16,13 @@ def fix_pandas_append_error():
                             sort=sort)
         pd.DataFrame.append = _append
 
+
+def _stars(p):
+    if p < 0.01:  return "***"
+    if p < 0.05:  return "**"
+    if p < 0.1:   return "*"
+    return ""
+
 def _ols_row(label, y_col, data, groups_col, h0_slope):
         mod = smf.ols(f"{y_col} ~ valuation", data=data).fit(
             cov_type="cluster", cov_kwds={"groups": data[groups_col]}

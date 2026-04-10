@@ -4,11 +4,11 @@ from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_
 
 from src.bargaining_analysis.main_results.main_regressions import model_gains_from_trade_number_offers, run_signaling_regressions, run_information_efficiency_regression, bargaining_power_regressions
 
-from src.bargaining_analysis.main_results.overall_equilibrium_pred import test_residuals_model_actual, test_ols_prediction_actual
+from src.bargaining_analysis.main_results.overall_equilibrium_pred import test_residuals_model_actual, test_ols_prediction_actual, plot_split_gains_valuation_t4_middle_high
 
 from src.bargaining_analysis.main_results.predictions_low_region import compare_termination_rates_low_rest, plot_valuation_vs_buyer_offers, payoff_for_trades_in_low_region,  timing_data_t4
 
-from src.bargaining_analysis.main_results.predictions_high_region_t4 import inject_values_t4_high_valuation_region, plot_offer_convergence_t4_high_region
+from src.bargaining_analysis.main_results.predictions_high_region_t4 import inject_values_t4_high_valuation_region, plot_offer_convergence_t4_high_region, inject_values_surplus_split_high_t4
 
 from src.bargaining_analysis.main_results.intermediate_region_t4 import inject_values_t4_middle_region, predicted_delay, table_deal_price_by_val_bin_t4
 
@@ -81,6 +81,13 @@ def task_inject_values_t4_middle_region(
     results = inject_values_t4_middle_region(df)
     inject_values(OVERLEAF_ROOT / "main.tex", **results)
 
+def task_inject_values_surplus_split_high_t4(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = inject_values_surplus_split_high_t4(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
 
 
 #--------------------------------------------------------------
@@ -137,8 +144,11 @@ def task_make_plotgrid_buyer_payoff_vs_valuation(
     plot_t4 = plot_buyer_payoff_vs_valuation(df[df["treatment"] == "T4"], COLOR_SCHEME, treatment_t4="yes")
 
     plot_t12.savefig(produces[0])
+    plt.close("all")
     plot_t3.savefig(produces[1])
+    plt.close("all")
     plot_t4.savefig(produces[2])
+    plt.close("all")
 
 
 
@@ -189,6 +199,16 @@ def task_run_signaling_regressions(
 # Plots
 #--------------------------------------------------------------
 
+def task_plot_split_gains_valuation_t4_middle_high(
+        deopends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "split_gains_from_trade_vs_valuation_t4_middle_high.pdf"      
+):
+    df = pd.read_csv(deopends_on)
+    plot = plot_split_gains_valuation_t4_middle_high(df)
+    plot.savefig(produces)
+    plt.close("all")
+
+
 def task_plot_buyer_surplus_share_by_treatment(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
         produces = OVERLEAF_FIGURES / "buyer_surplus_share_by_treatment.pdf"
@@ -197,6 +217,7 @@ def task_plot_buyer_surplus_share_by_treatment(
     df = pd.read_csv(depends_on)
     plot = plot_buyer_surplus_share(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_offer_convergence_t4_high_region(
@@ -206,6 +227,7 @@ def task_plot_offer_convergence_t4_high_region(
     df = pd.read_csv(depends_on)
     plot = plot_offer_convergence_t4_high_region(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_density_of_split_by_gft_exclusions_symcost(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -215,6 +237,7 @@ def task_plot_density_of_split_by_gft_exclusions_symcost(
     df = pd.read_csv(depends_on)
     plot = plot_density_of_split_by_gft_exclusions_symcost(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_densities_by_first_offer_symno(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -223,6 +246,7 @@ def task_densities_by_first_offer_symno(
     df = pd.read_csv(depends_on)
     plot = densities_by_first_offer_symno(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_first_offer_regression_symno(
@@ -234,6 +258,7 @@ def task_plot_first_offer_regression_symno(
     df_plot = df[(df["treatment"] == "T1")]
     plot = plot_first_offer_regression(df_plot)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_first_offer_regression_symcost(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -243,6 +268,7 @@ def task_plot_first_offer_regression_symcost(
     df_plot = df[(df["treatment"] == "T2")]
     plot = plot_first_offer_regression(df_plot)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_logit_fit_for_agreement_symno(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -252,6 +278,7 @@ def task_plot_logit_fit_for_agreement_symno(
     plot_df = df[(df["treatment"] == "T1")]
     plot = plot_logit_fit_for_agreement_sym(plot_df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_logit_fit_for_agreement_symcost(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -261,6 +288,7 @@ def task_plot_logit_fit_for_agreement_symcost(
     plot_df = df[(df["treatment"] == "T2")]
     plot = plot_logit_fit_for_agreement_sym(plot_df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_deviation_from_equal_splitsymcost(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -273,6 +301,7 @@ def task_plot_deviation_from_equal_splitsymcost(
                 ].copy()
     plot = plot_deviation_from_equal_split_sym(df_plot, binning='width', num_bins=8, time_inconsistency=False)
     plot.savefig(produces)
+    plt.close("all")
 
 for configuration in [(8, False), (12, False), (6, False), (8, True)]:
 
@@ -292,6 +321,7 @@ for configuration in [(8, False), (12, False), (6, False), (8, True)]:
                 ].copy()
         plot = plot_deviation_from_equal_split_sym(df_plot, binning='width', num_bins=num_bins, time_inconsistency=time_inconsistency)
         plot.savefig(produces)
+        plt.close("all")
 
 
 def task_plot_cox_by_tacosts(
@@ -301,6 +331,7 @@ def task_plot_cox_by_tacosts(
     df = pd.read_csv(depends_on)
     plot = plot_cox_by_tacosts(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_agreement_prob_by_gft_ma3(
@@ -310,6 +341,7 @@ def task_plot_agreement_prob_by_gft_ma3(
     df = pd.read_csv(depends_on)
     plot = plot_agreement_prob_by_gft_ma3(df, binning="nearest")
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_buyer_share_as_function_of_surplus(
@@ -320,6 +352,7 @@ def task_plot_buyer_share_as_function_of_surplus(
     df = pd.read_csv(depends_on)
     plot = plot_buyer_share_as_function_of_surplus(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_boxplots_seller_gains_from_trade(
@@ -329,6 +362,7 @@ def task_plot_boxplots_seller_gains_from_trade(
     df = pd.read_csv(depends_on)
     plot = plot_boxplots_seller_gains_from_trade(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_buyer_first_offer_vs_valuation(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -337,6 +371,7 @@ def task_plot_buyer_first_offer_vs_valuation(
     df = pd.read_csv(depends_on)
     plot = plot_buyer_first_offer_vs_valuation(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_two_sided_signaling(
@@ -346,6 +381,7 @@ def task_plot_two_sided_signaling(
     df = pd.read_csv(depends_on)
     plot = plot_two_sided_signaling(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_split_gains_by_treatment_role_grouped_t34(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -354,6 +390,7 @@ def task_plot_split_gains_by_treatment_role_grouped_t34(
     df = pd.read_csv(depends_on)
     plot = plot_split_gains_by_treatment_role_grouped_t34(df, COLOR_SCHEME)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_buyer_payoff_vs_gains_from_trade_t12(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -362,6 +399,7 @@ def task_plot_buyer_payoff_vs_gains_from_trade_t12(
     df = pd.read_csv(depends_on)
     plot = plot_buyer_payoff_vs_gains_from_trade_t12(df, COLOR_SCHEME, LEGEND_ELEMENTS_OUTCOME)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_offer_time_vs_valuation_demeaned_t34_buyer(
@@ -371,6 +409,7 @@ def task_plot_offer_time_vs_valuation_demeaned_t34_buyer(
     df = pd.read_csv(depends_on)
     plot = plot_offer_time_vs_valuation_demeaned_t34_buyer(df, COLOR_SCHEME)
     plot.savefig(produces)
+    plt.close("all")
 
 
 def task_plot_offer_time_vs_valuation_demeaned_t12(
@@ -380,6 +419,7 @@ def task_plot_offer_time_vs_valuation_demeaned_t12(
     df = pd.read_csv(depends_on)
     plot = plot_offer_time_vs_valuation_demeaned_t12(df, COLOR_SCHEME)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_boxplots_buyer_split_gains_from_trade(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -388,6 +428,7 @@ def task_plot_boxplots_buyer_split_gains_from_trade(
     df = pd.read_csv(depends_on)
     plot = plot_boxplots_buyer_split_gains_from_trade(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_boxplots_buyer_number_of_offers(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -396,6 +437,7 @@ def task_plot_boxplots_buyer_number_of_offers(
     df = pd.read_csv(depends_on)
     plot = plot_boxplots_buyer_number_of_offers(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_compare_seller_split_gains_from_trade_by_treatment(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -404,6 +446,7 @@ def task_plot_compare_seller_split_gains_from_trade_by_treatment(
     df = pd.read_csv(depends_on)
     plot = compare_seller_split_gains_from_trade_by_treatment(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 for treatments in [
@@ -420,6 +463,7 @@ for treatments in [
         df = pd.read_csv(depends_on)
         plot = plot_gains_from_trade_number_offers(df, treatments=treatments)
         plot.savefig(produces)
+        plt.close("all")
 
 def task_plot_acceptance_rates(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -428,6 +472,7 @@ def task_plot_acceptance_rates(
     df = pd.read_csv(depends_on)
     plot = plot_acceptance_rates(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_last_offer_time_vs_valuation_t34(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -436,6 +481,7 @@ def task_plot_last_offer_time_vs_valuation_t34(
     df = pd.read_csv(depends_on)
     plot = plot_last_offer_time_vs_valuation_t34(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_last_offer_time_vs_valuation_t12(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -444,6 +490,7 @@ def task_plot_last_offer_time_vs_valuation_t12(
     df = pd.read_csv(depends_on)
     plot = plot_last_offer_time_vs_valuation_t12(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_split_gains_from_trade_vs_valuation_t34(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -452,6 +499,7 @@ def task_plot_split_gains_from_trade_vs_valuation_t34(
     df = pd.read_csv(depends_on)
     plot = plot_split_gains_from_trade_vs_valuation_t34(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_split_gains_from_trade_vs_valuation_t12(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -460,6 +508,7 @@ def task_plot_split_gains_from_trade_vs_valuation_t12(
     df = pd.read_csv(depends_on)
     plot = plot_split_gains_from_trade_vs_valuation_t12(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_mean_payoff_t3t4(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -468,6 +517,7 @@ def task_plot_mean_payoff_t3t4(
     df = pd.read_csv(depends_on)
     plot = plot_mean_payoff_t3t4(df)
     plot.savefig(produces)
+    plt.close("all")
 
 def task_plot_valuation_vs_buyer_offers(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -477,6 +527,7 @@ def task_plot_valuation_vs_buyer_offers(
     df = pd.read_csv(depends_on)
     plot = plot_valuation_vs_buyer_offers(df)
     plot.savefig(produces)
+    plt.close("all")
 
 
 
