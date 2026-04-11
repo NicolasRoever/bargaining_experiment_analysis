@@ -79,7 +79,7 @@ def test_ols_prediction_actual(df):
     model = smf.ols("payoff ~ predicted_payoff", data=df).fit()
 
     results.update(
-        ols_r_squared_pred_empirical=round(model.rsquared, 2),
+        ols_r_squared_pred_empirical=round(model.rsquared * 100, 0),
         slope_pred_empirical=round(model.params["predicted_payoff"], 2),
         slope_pred_empirical_lb=round(model.conf_int().loc["predicted_payoff", 0], 2),
         slope_pred_empirical_ub=round(model.conf_int().loc["predicted_payoff", 1], 2)

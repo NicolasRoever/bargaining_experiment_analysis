@@ -34,6 +34,7 @@ cd ..
 - Participant with label 72TouSYb still has weird first offer times. We need to fix this somehow!
 - dwjn1hbc has negative first offer time, should exclude him as well
 - plot_mean_payoff_t3t4: This function seems to contradict me :)
+- Think about time inconsistency and make sure it is handled well in all analyses.
 
 
 ### Errata

@@ -44,6 +44,8 @@ VARLABELS_REGRESSION = {'const':'Constant','first_offer':'First Offer', 'split_g
     "C(information_asymmetry)[T.two-sided]": "Symmetric Uncertainty", 
     "positive_gains_symmetric_treatment": "Positive Gains from Trade $\\times$ Symmetric Uncertainty",
     "ultimatum_indicator": "Ultimatum Offer $>50\%$",
+    "ultimatum_offer": "Ultimatum Offer",
+    "payoff": "Payoff",
     "risk_elicitation_choice": "Risk Aversion",
     "time_preference_switching_points": "Time Preference",
     "bargaining_time_full_sec": "Bargaining Time (sec)",
