@@ -29,6 +29,7 @@ The following files are available for further information:
 - `claude_assets/data_description.md`: Descriptions of the dataset
 - ``claude_assets/plotting.md``: Instructions for how to code plots 
 - ``claude_assets/regression_tables.md``: Instructions for how to code regression tables
+- `claude_assets/analysis_rules.md`: Rules for when you do analyses (e.g. which controls to include, which observations to exclude etc.)
 
 
 ## Instructions for Coding 
@@ -53,7 +54,6 @@ if __name__ == "__main__":
     fig.savefig(OVERLEAF_FIGURES / "data_plot.pdf")    
 ```
 
-If you make an analysis where you study the timing (i.e. offer times), exclude observations which are in the first four sessions (the dates are: 2025-06-11, 2025-06-13, 2025-06-16, 2025-06-17; you can extract them from `experiment_start_time` column in the dataset, which is in Unix time format, so you need to convert it to datetime first). This is because there were some technical issues in the first four sessions which led to very long offer times.
 
 ### Key Configuration
 

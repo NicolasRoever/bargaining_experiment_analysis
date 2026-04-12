@@ -12,9 +12,6 @@ from src.bargaining_analysis.main_results.main_results import equilibrium_payoff
 
 from src.bargaining_analysis.helper import set_plot_theme, finalize_plot, _clustered_mean_test, _ols_row
 
-SELLER_ID = 1
-BUYER_ID  = 2
-
 
 def _prepare(df):
     buyers  = df[df["participant_role"] == "Buyer"].copy()
@@ -136,9 +133,3 @@ def table_transaction_costs_summary(df):
     return "\n".join(lines)
 
 
-if __name__ == "__main__":
-    df  = pd.read_csv(BLD / "data" / "merged_data_full_excluded.csv")
-    tex = table_transaction_costs_summary(df=df)
-    out = OVERLEAF_TABLES / "transaction_costs_summary.tex"
-    out.write_text(tex)
-    print(f"Saved to {out}")

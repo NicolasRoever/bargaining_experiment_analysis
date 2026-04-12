@@ -12,13 +12,21 @@ from src.bargaining_analysis.main_results.predictions_high_region_t4 import inje
 
 from src.bargaining_analysis.main_results.intermediate_region_t4 import inject_values_t4_middle_region, predicted_delay, table_deal_price_by_val_bin_t4
 
-from src.bargaining_analysis.main_results.information_rents import plot_buyer_surplus_share
+from bargaining_analysis.main_results.information_rents_v001 import plot_buyer_surplus_share
 
 from src.bargaining_analysis.main_results.main_tables import compute_acceptance_rates, compute_metrics_buyer_only_table
 
 from src.bargaining_analysis.config import BLD, OVERLEAF_FIGURES, COLOR_SCHEME, OVERLEAF_TABLES, VARLABELS_REGRESSION, LEGEND_ELEMENTS_OUTCOME, OVERLEAF_ROOT
+
 from src.bargaining_analysis.main_results.descriptive_actions_table import calculate_bargaining_actions_values
 
+from src.bargaining_analysis.main_results.transaction_costs import table_transaction_costs_summary
+
+from src.bargaining_analysis.main_results.split_density import plot_split_histogram_pooled
+
+from src.bargaining_analysis.main_results.comparing_one_two_sided import table_buyer_seller_summary_compare_one_two_sided
+
+from src.bargaining_analysis.main_results.surplus_share_analysis import calculate_mechanism_values_surplus_share
 
 from src.bargaining_analysis.helper import inject_values
 import pandas as pd
@@ -29,6 +37,14 @@ from pytask import task
 #--------------------------------------------------------------
 # Inject Values
 #--------------------------------------------------------------
+
+def task_inject_mechanism_values_surplus_share(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+): 
+    
+    df = pd.read_csv(depends_on)
+    results = calculate_mechanism_values_surplus_share(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
 
 def task_inject_residuals_values(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv"
@@ -195,9 +211,29 @@ def task_run_signaling_regressions(
     df = pd.read_csv(depends_on)
     run_signaling_regressions(df, out_path)
 
+
+def task_make_table_buyer_seller_summary_compare_one_two_sided(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_TABLES / "buyer_seller_summary_compare_one_two_sided.tex"
+):
+    df = pd.read_csv(depends_on)
+    latex = table_buyer_seller_summary_compare_one_two_sided(df)
+    produces.write_text(latex)
+
+
 #--------------------------------------------------------------
 # Plots
 #--------------------------------------------------------------
+
+
+def task_plot_split_histopgram_pooled(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "split_histogram_pooled.pdf"):
+
+    df = pd.read_csv(depends_on)
+    fig = plot_split_histogram_pooled(df=df)
+    fig.savefig(produces, bbox_inches="tight")
+    plt.close("all")
 
 def task_plot_split_gains_valuation_t4_middle_high(
         deopends_on = BLD / "data" / "merged_data_full_excluded.csv",
@@ -534,6 +570,15 @@ def task_plot_valuation_vs_buyer_offers(
 #--------------------------------------------------------------
 # Regression Tables
 #--------------------------------------------------------------
+
+
+def task_table_transaction_costs_summary(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_TABLES / "transaction_costs_summary.tex"): 
+    
+    df  = pd.read_csv(depends_on)
+    tex = table_transaction_costs_summary(df=df)
+    produces.write_text(tex)
 
 def task_run_information_efficiency_regression(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",

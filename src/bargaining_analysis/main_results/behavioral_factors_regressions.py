@@ -171,11 +171,7 @@ def run_risk_aversion_acceptance_regression(
     controls = "C(treatment) + gains_from_trade + C(group_session)"
 
     # Exclude the first four sessions for timing analyses (technical issues)
-    EXCLUDED_DATES = {"2025-06-11", "2025-06-13", "2025-06-16", "2025-06-17"}
-    base_df["_session_date"] = pd.to_datetime(
-        base_df["experiment_start_time"], unit="s", utc=True
-    ).dt.tz_convert("Europe/Berlin").dt.strftime("%Y-%m-%d")
-    timing_df = base_df[~base_df["_session_date"].isin(EXCLUDED_DATES)].copy()
+    timing_df = base_df[base_df["exclude_for_time_analysis"] != 1].copy()
 
     def _fit(formula, data):
         data_clean = data.dropna(subset=_vars_from_formula(formula))

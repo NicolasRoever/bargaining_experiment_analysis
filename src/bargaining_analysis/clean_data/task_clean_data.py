@@ -6,6 +6,7 @@ import glob
 
 import pandas as pd
 import openpyxl
+import numpy as np
 
 
 set_plot_theme()
@@ -126,6 +127,13 @@ def task_create_merged_data(
     groupings_df = pd.read_pickle(groupings_df_path)
     merged_df = add_group_id_in_session(merged_df, groupings_df)
     merged_df["group_id"] = merged_df.groupby(['session_id', 'group_id_in_session']).ngroup()
+
+    # Add inidicator for excluded sessions (technical issues)
+    EXCLUDED_DATES = {"2025-06-11", "2025-06-13", "2025-06-16", "2025-06-17"}
+    merged_df["session_date"] = pd.to_datetime(
+        merged_df["experiment_start_time"], unit="s", utc=True
+    ).dt.tz_convert("Europe/Berlin").dt.strftime("%Y-%m-%d")
+    merged_df["exclude_for_time_analysis"] = np.where(merged_df["session_date"].isin(EXCLUDED_DATES), 1, 0)
 
     merged_df.to_csv(produces, index=False)
 

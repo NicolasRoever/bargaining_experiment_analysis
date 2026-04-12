@@ -45,7 +45,7 @@ def _prepare(df):
     buyers  = df[df["participant_role"] == "Buyer"].copy()
     sellers = df[df["participant_role"] == "Seller"][
         ["negotiation_id", "payoff", "first_offer", "number_of_offers",
-         "offer_1", "own_offer_accepted", "participant_code"]
+         "offer_1", "own_offer_accepted", "participant_code", "split_gains_from_trade"]
     ].rename(columns={
         "payoff":            "seller_payoff",
         "first_offer":       "first_offer_seller",
@@ -53,6 +53,7 @@ def _prepare(df):
         "offer_1":           "offer_1_seller",
         "own_offer_accepted":"seller_offer_accepted",
         "participant_code":  "seller_code",
+        "split_gains_from_trade": "split_gains_from_trade_seller"
     })
     m = buyers.merge(sellers, on="negotiation_id", how="left")
     m.rename(columns={
@@ -81,18 +82,8 @@ def _prepare(df):
     full["price_deviation"] = full["deal_price"] - full["equal_split_price"]
 
     # Buyer share of realised surplus
-    full["total_realised"] = full["payoff"] + full["seller_payoff"]
-    full["buyer_share_realised"] = np.where(
-        full["total_realised"] > 0,
-        full["payoff"] / full["total_realised"],
-        np.nan,
-    )
-    # Buyer share of available surplus
-    full["buyer_share_available"] = np.where(
-        full["gains_from_trade"] > 0,
-        full["payoff"] / full["gains_from_trade"],
-        np.nan,
-    )
+    full["buyer_share_realised"] = full["split_gains_from_trade"]
+
 
     # Per-cell subsets (trades only)
     trades = full[full["agreement_dummy"] == 1].copy()
