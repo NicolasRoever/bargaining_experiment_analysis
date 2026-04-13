@@ -25,6 +25,7 @@ cd ..
 - Add Split gains from trade in Appendix table tab:regressions_asymmetric_bargaining
 - Fix Cox curves
 - Evidence on Division
+
 ### Open To-Do
 
 - Fix how we correct times in the first 4 sessions; there are still issues.
@@ -35,6 +36,7 @@ cd ..
 - dwjn1hbc has negative first offer time, should exclude him as well
 - plot_mean_payoff_t3t4: This function seems to contradict me :)
 - Think about time inconsistency and make sure it is handled well in all analyses.
+- (15.48) this is this one weird negotiation with 400 offers in no cost, buyer only uncertainty, check this out.
 
 
 ### Errata

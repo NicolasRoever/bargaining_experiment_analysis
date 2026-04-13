@@ -1,4 +1,4 @@
-from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_vs_valuation, regression_table_symmetric_treatment,regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators, plot_buyer_first_offer_vs_valuation, plot_two_sided_signaling, plot_split_gains_by_treatment_role_grouped_t34, plot_buyer_payoff_vs_gains_from_trade_t12, plot_offer_time_vs_valuation_demeaned_t34_buyer, plot_offer_time_vs_valuation_demeaned_t12
+from src.bargaining_analysis.main_results.main_results import plot_buyer_payoff_vs_valuation, regression_table_symmetric_treatment,regression_table_asymmetric_treatment, regression_table_symmetric_treatment, regression_table_all_treatments, regression_table_master_negotiators, plot_buyer_first_offer_vs_valuation, plot_two_sided_signaling, plot_split_gains_by_treatment_role_grouped_t34, plot_buyer_payoff_vs_gains_from_trade_t12, plot_offer_time_vs_valuation_demeaned_t34_buyer, plot_offer_time_vs_valuation_demeaned_t12, compute_sample_statistics
 
 from src.bargaining_analysis.main_results.main_plots import plot_boxplots_buyer_split_gains_from_trade, plot_boxplots_buyer_number_of_offers, compare_seller_split_gains_from_trade_by_treatment, plot_gains_from_trade_number_offers, plot_acceptance_rates, plot_last_offer_time_vs_valuation_t34, plot_last_offer_time_vs_valuation_t12, plot_split_gains_from_trade_vs_valuation_t34, plot_split_gains_from_trade_vs_valuation_t12, plot_mean_payoff_t3t4, plot_boxplots_seller_gains_from_trade, plot_buyer_share_as_function_of_surplus, plot_agreement_prob_by_gft_ma3, plot_cox_by_tacosts, plot_deviation_from_equal_split_sym, plot_logit_fit_for_agreement_sym,  plot_first_offer_regression, densities_by_first_offer_symno, plot_density_of_split_by_gft_exclusions_symcost
 
@@ -37,6 +37,13 @@ from pytask import task
 #--------------------------------------------------------------
 # Inject Values
 #--------------------------------------------------------------
+
+def task_inject_sample_statistics(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = compute_sample_statistics(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
 
 def task_inject_mechanism_values_surplus_share(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv"

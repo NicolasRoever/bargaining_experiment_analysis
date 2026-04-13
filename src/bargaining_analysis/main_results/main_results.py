@@ -18,6 +18,20 @@ def equilibrium_payoff(x, c=0.05, r=0.01):
     else:
         b = x
         return ((r*b + 2*c)/(r*21.40 + 2*c)) * (b/2 + c/r) - c/r
+
+
+def compute_sample_statistics(df: pd.DataFrame) -> dict:
+    """
+    Compute descriptive statistics for the analysis sample.
+    Returns a dictionary with total number of negotiations and participants.
+    """
+    total_negotiations = df["negotiation_id"].nunique()
+    total_participants = df["participant_code"].nunique()
+    
+    return {
+        "total_negotiations": int(total_negotiations),
+        "total_participants": int(total_participants),
+    }
     
 
 def plot_buyer_payoff_vs_valuation(

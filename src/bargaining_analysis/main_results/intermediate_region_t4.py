@@ -93,10 +93,12 @@ def inject_values_t4_middle_region(df):
     m, se, t, p_share_different_05_mid_t4 = _clustered_mean_test(d["buyer_share"], d["participant_code"], h0_mean=0.5)
 
     # First seller offer
-    seller_first = trades[trades["first_offer_seller"] == 1]
-    model = smf.ols(" offer_1_seller ~ valuation", data=seller_first).fit(cov_type="cluster", cov_kwds={"groups": seller_first["participant_code"]})
+    model = smf.ols(" offer_1_seller ~ valuation", data=trades).fit(cov_type="cluster", cov_kwds={"groups": trades["participant_code"]})
     slope_seller1_valuation_mid_t4 = model.params["valuation"]
     pval_valuation_seller = model.pvalues["valuation"]
+
+    corr_df_seller1_valuation_mid_t4 = trades[["valuation", "offer_1_seller"]].dropna()
+    correlation_seller1_valuation_mid_t4, p_correlation_seller1_valuation_mid_t4 = stats.spearmanr(corr_df_seller1_valuation_mid_t4["valuation"], corr_df_seller1_valuation_mid_t4["offer_1_seller"])
 
     #Price Bargaining Mechanism
     sl_price, se_price, p_price, p_price_h0 = _ols_row(
@@ -116,7 +118,9 @@ def inject_values_t4_middle_region(df):
         "slope_price_valuation_mid_t4": f"{sl_price:.2f}",
         "slope_p_value_different_05": f"{p_price_h0:.2f}",
         "slope_seller1_valuation_mid_t4": f"{slope_seller1_valuation_mid_t4:.2f}",
-        "p_value_valuation_seller_first_offer_mid_t4": f"{pval_valuation_seller:.2f}"
+        "p_value_valuation_seller_first_offer_mid_t4": f"{pval_valuation_seller:.2f}",
+        "correlation_seller1_valuation_mid_t4": f"{correlation_seller1_valuation_mid_t4:.2f}",
+        "p_correlation_seller1_valuation_mid_t4": f"{p_correlation_seller1_valuation_mid_t4:.2f}"   
 
 
     }

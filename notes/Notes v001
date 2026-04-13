@@ -1,0 +1,16 @@
+# Notes Paper v001
+
+These are notes justifying decisions made when I wrote up the first draft of the paper. 
+
+- In an old analysis, we claimed that ``This pattern confirms that surplus
+division is remarkably balanced: once trade is worthwhile, agreements are both frequent and nearly
+symmetric in outcome.'' - I deviated from this story and highlighted that buyers actually have a persistent---though economically moderate---advantage. This is just my view of the data. 
+
+- Estimation of agreement frontier: I cut this, because it is rather uninteresting (maybe keep in appendix?)
+
+- ``Finally, we test whether making the first offer translates into rents in realized surplus shares''. In an old analysi we said that there are no first offer advantages; I find the opposite. 
+
+- ``We show that, in our
+data, these rents and power asymmetries are nearly absent.'' I revised this statament, we find rents as well as first mover effects.
+
+- I summarized dynamics into one figure for the main paper, and put the longer section on dynamics into the appendix. I think it is nice, but just does not have super surprising results. 
