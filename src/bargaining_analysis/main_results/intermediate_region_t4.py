@@ -93,11 +93,15 @@ def inject_values_t4_middle_region(df):
     m, se, t, p_share_different_05_mid_t4 = _clustered_mean_test(d["buyer_share"], d["participant_code"], h0_mean=0.5)
 
     # First seller offer
-    model = smf.ols(" offer_1_seller ~ valuation", data=trades).fit(cov_type="cluster", cov_kwds={"groups": trades["participant_code"]})
+    reg_seller_offer = trades[["offer_1_seller", "valuation", "participant_code"]].dropna().copy()
+    model = smf.ols("offer_1_seller ~ valuation", data=reg_seller_offer).fit(
+        cov_type="cluster",
+        cov_kwds={"groups": reg_seller_offer["participant_code"]},
+    )
     slope_seller1_valuation_mid_t4 = model.params["valuation"]
     pval_valuation_seller = model.pvalues["valuation"]
 
-    corr_df_seller1_valuation_mid_t4 = trades[["valuation", "offer_1_seller"]].dropna()
+    corr_df_seller1_valuation_mid_t4 = reg_seller_offer[["valuation", "offer_1_seller"]].copy()
     correlation_seller1_valuation_mid_t4, p_correlation_seller1_valuation_mid_t4 = stats.spearmanr(corr_df_seller1_valuation_mid_t4["valuation"], corr_df_seller1_valuation_mid_t4["offer_1_seller"])
 
     #Price Bargaining Mechanism
