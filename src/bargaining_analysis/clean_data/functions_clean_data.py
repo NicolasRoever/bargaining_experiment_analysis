@@ -164,6 +164,9 @@ def clean_data(raw_data):
 
     
     #Individual Offers and Offer Times
+    # Collapse consecutive runs of the same offer value (button-mashing) into one offer
+    # with the mean time of the run, so downstream count/timing variables are not distorted.
+    df_long_wide = normalize_repeated_offers(df_long_wide)
     df_clean = add_offer_columns(
         raw_df=df_long_wide,
         df_clean=df_clean,
@@ -403,6 +406,91 @@ def fix_acceptance_time(df: pd.DataFrame) -> pd.DataFrame:
     Fix the acceptance time by adding the bargaining start time.
     """
     pass
+
+def normalize_repeated_offers(df: pd.DataFrame, min_run_length: int = 25) -> pd.DataFrame:
+    """
+    Collapse consecutive runs of >= min_run_length identical offer amounts into a
+    single offer with the mean time of the run.
+
+    Conservative by design: runs shorter than min_run_length are left untouched,
+    so only extreme button-mashing (25+ identical consecutive offers) is normalized.
+
+    Raises ValueError if more than 20 rows are affected, to guard against
+    unintended mass-normalization.
+    """
+    out = df.copy()
+
+    def _needs_collapse(amounts_str, times_str):
+        if pd.isna(amounts_str) or pd.isna(times_str):
+            return False
+        amounts = [float(x) for x in ast.literal_eval(amounts_str)]
+        times   = [float(x) for x in ast.literal_eval(times_str)]
+        if len(amounts) != len(times) or len(amounts) == 0:
+            return False
+        run_len = 1
+        for a, b in zip(amounts, amounts[1:]):
+            if np.isclose(a, b, rtol=1e-6, atol=1e-6):
+                run_len += 1
+                if run_len >= min_run_length:
+                    return True
+            else:
+                run_len = 1
+        return False
+
+    def _collapse(amounts_str, times_str):
+        amounts = [float(x) for x in ast.literal_eval(amounts_str)]
+        times   = [float(x) for x in ast.literal_eval(times_str)]
+
+        new_amounts, new_times = [], []
+        run_val   = amounts[0]
+        run_times = [times[0]]
+
+        for a, t in zip(amounts[1:], times[1:]):
+            if np.isclose(a, run_val, rtol=1e-6, atol=1e-6):
+                run_times.append(t)
+            else:
+                if len(run_times) >= min_run_length:
+                    new_amounts.append(run_val)
+                    new_times.append(float(np.mean(run_times)))
+                else:
+                    new_amounts.extend([run_val] * len(run_times))
+                    new_times.extend(run_times)
+                run_val   = a
+                run_times = [t]
+
+        if len(run_times) >= min_run_length:
+            new_amounts.append(run_val)
+            new_times.append(float(np.mean(run_times)))
+        else:
+            new_amounts.extend([run_val] * len(run_times))
+            new_times.extend(run_times)
+
+        return str(new_amounts), str(new_times)
+
+    affected_mask = out.apply(
+        lambda row: _needs_collapse(row["amount_proposed_list"], row["offer_time_list"]),
+        axis=1,
+    )
+    n_affected = affected_mask.sum()
+    print(f"normalize_repeated_offers: {n_affected} row(s) contain a run of >= {min_run_length} identical consecutive offers and will be normalized.")
+
+    if n_affected > 20:
+        raise ValueError(
+            f"normalize_repeated_offers: {n_affected} rows would be normalized, "
+            f"which exceeds the safety threshold of 3. "
+            f"Inspect the data before proceeding."
+        )
+
+    if n_affected > 0:
+        collapsed = out.loc[affected_mask].apply(
+            lambda row: _collapse(row["amount_proposed_list"], row["offer_time_list"]),
+            axis=1,
+            result_type="expand",
+        )
+        out.loc[affected_mask, "amount_proposed_list"] = collapsed[0].values
+        out.loc[affected_mask, "offer_time_list"]      = collapsed[1].values
+
+    return out
 
 def add_offer_columns(raw_df: pd.DataFrame,
                       df_clean: pd.DataFrame,
@@ -1210,23 +1298,26 @@ def apply_technical_exclusion_criteria(df: pd.DataFrame) -> pd.DataFrame:
     # Combine negotiation_ids to exclude
     exclude_ids = set(bad_time_ids) | set(bad_both_ids)
     
-    # Criterion 3: specific rows to exclude
+    # Criterion 3: specific negotiations to exclude (drop both rows)
     third_mask = (
         (df_out["session_id"] == "8jp2clvt") &
         (df_out["group_id_in_session"] == 4) &
         (df_out["round"] >= 13)
     )
-    bad_third_count = third_mask.sum()
-    print(f"Excluding {bad_third_count} rows for session '8jp2clvt', group 4, round >= 13")
+    bad_third_ids = df_out.loc[third_mask, "negotiation_id"].unique()
+    print(
+        f"Excluding {len(bad_third_ids)} negotiations for session '8jp2clvt', "
+        "group 4, round >= 13"
+    )
     
-    # Filter out all excluded negotiation_ids and the specific rows
+    # Filter out all excluded negotiation_ids
     filtered_df = df_out.loc[
         ~df_out["negotiation_id"].isin(exclude_ids) & 
-        ~third_mask
+        ~df_out["negotiation_id"].isin(bad_third_ids)
     ].reset_index(drop=True)
     
     return filtered_df
-
+    
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def create_buyer_valuation_column(df: pd.DataFrame) -> pd.Series:
     """
