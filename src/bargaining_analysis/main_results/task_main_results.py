@@ -28,6 +28,8 @@ from src.bargaining_analysis.main_results.comparing_one_two_sided import table_b
 
 from src.bargaining_analysis.main_results.surplus_share_analysis import calculate_mechanism_values_surplus_share
 
+from src.bargaining_analysis.main_results.process_analysis import plot_offer_distance_to_prediction, calculate_offer_distance_boundary_values, calculate_first_and_last_offers_t4
+
 from src.bargaining_analysis.helper import inject_values
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -109,6 +111,20 @@ def task_inject_values_surplus_split_high_t4(
 ):
     df = pd.read_csv(depends_on)
     results = inject_values_surplus_split_high_t4(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
+def task_inject_offer_distance_boundary_values(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = calculate_offer_distance_boundary_values(df)
+    inject_values(OVERLEAF_ROOT / "main.tex", **results)
+
+def task_inject_first_and_last_offers_t4(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv"
+):
+    df = pd.read_csv(depends_on)
+    results = calculate_first_and_last_offers_t4(df)
     inject_values(OVERLEAF_ROOT / "main.tex", **results)
 
 
@@ -565,11 +581,20 @@ def task_plot_mean_payoff_t3t4(
 def task_plot_valuation_vs_buyer_offers(
     depends_on = BLD / "data" / "merged_data_full_excluded.csv",
     produces = OVERLEAF_FIGURES / "valuation_vs_buyer_offers_t3.pdf"
-): 
-    
+):
+
     df = pd.read_csv(depends_on)
     plot = plot_valuation_vs_buyer_offers(df)
     plot.savefig(produces)
+    plt.close("all")
+
+def task_plot_offer_distance_to_prediction(
+        depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+        produces = OVERLEAF_FIGURES / "offer_distance_to_prediction.pdf"
+):
+    df = pd.read_csv(depends_on)
+    plot = plot_offer_distance_to_prediction(df)
+    plot.savefig(produces, bbox_inches="tight")
     plt.close("all")
 
 

@@ -16,7 +16,10 @@ BLD = ROOT.joinpath("bld").resolve()
 
 DOCUMENTS = ROOT.joinpath("documents").resolve()
 
-TEMPLATE_GROUPS = ["marital_status", "highest_qualification"]
+
+# Valuation cutoffs for T4 buyer regions
+B_DAGGER = 7.72   # lower bound of intermediate region
+B_STAR   = 21.40  # lower bound of high region
 
 
 #-----------------
