@@ -119,10 +119,10 @@ def plot_buyer_surplus_share(df, figsize=(10, 5)):
     _, trades = _prepare(df)
 
     TREATMENTS = {
-        "T4": "BuyerCost",
-        "T2": "SymCost",
-        "T3": "BuyerNoCost",
-        "T1": "SymNoCost",
+        "T4": "OneSidedCost",
+        "T2": "TwoSidedCost",
+        "T3": "OneSidedNoCost",
+        "T1": "TwoSidedNoCost",
     }
 
     series = {t: trades.loc[trades["treatment"] == t, "buyer_share_realised"].dropna()
