@@ -117,7 +117,11 @@ def task_inject_values_for_mistakes(
 
     total_number_mistakes = df["mistake"].sum()
     total_number_negotiations = round((len(df)) / 2)
-    average_session_duration = round(df["experiment_duration"].mean() / 60, 2)
+    # Deduplicate to participant level before averaging to avoid over-weighting
+    # participants who appear in more rounds
+    average_session_duration = round(
+        df.groupby("participant_code")["experiment_duration"].first().mean() / 60, 2
+    )
 
     inject_values(
         OVERLEAF_TABLES.parents[1] / "main.tex",

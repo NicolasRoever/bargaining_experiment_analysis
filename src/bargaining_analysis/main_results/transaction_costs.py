@@ -60,12 +60,12 @@ def _prepare(df):
 
 
 def _cost_effect(outcome, df, groups="participant_code"):
-    """OLS outcome ~ has_cost + two_sided + has_cost:two_sided (pooled).
+    """OLS outcome ~ has_cost + two_sided (pooled).
     Returns (no_cost_mean, cost_mean, coef, se, p).
     """
     d = df.dropna(subset=[outcome]).copy()
     mod = smf.ols(
-        f"{outcome} ~ has_cost + two_sided + has_cost:two_sided", data=d
+        f"{outcome} ~ has_cost + two_sided", data=d
     ).fit(cov_type="cluster", cov_kwds={"groups": d[groups]})
     coef = mod.params["has_cost"]
     se   = mod.bse["has_cost"]
@@ -96,7 +96,7 @@ def table_transaction_costs_summary(df):
     panels = {
         "A: Process Variables": [
             ("Negotiation duration (sec)",    "bargaining_time_full_sec", trades, "participant_code"),
-            ("Number of offers",              "total_offers",             trades, "participant_code"),
+            ("Number of offers",              "total_offers",             full,  "participant_code"),
             ("Time per offer (sec)",          "sec_per_offer",            trades, "participant_code"),
             ("Time to first offer (sec)",     "time_to_first_offer",      full,   "participant_code"),
         ],
@@ -112,13 +112,13 @@ def table_transaction_costs_summary(df):
     # header
     lines.append(
         r"\textbf{Outcome} & \textbf{Mean (no cost)} & \textbf{Mean (cost)} "
-        r"& \textbf{Cost effect $\hat\beta$} & \textbf{$p$-value} \\"
+        r"& \textbf{Cost effect $\hat\beta$} \\"
     )
     lines.append(r"\hline")
 
     for panel_title, rows in panels.items():
         lines.append(
-            rf"\multicolumn{{5}}{{l}}{{\textit{{{panel_title}}}}} \\"
+            rf"\multicolumn{{4}}{{l}}{{\textit{{{panel_title}}}}} \\"
         )
         for label, outcome, data, groups in rows:
             nc_m, c_m, coef, se, p = _cost_effect(outcome, data, groups)
@@ -126,7 +126,7 @@ def table_transaction_costs_summary(df):
 
             lines.append(
                 rf"{label} & {nc_m:.3f} & {c_m:.3f} & "
-                rf"{coef:+.3f} ({se:.3f}){stars} & {p:.3f} \\"
+                rf"{coef:+.3f} ({se:.3f}){stars} \\"
             )
         lines.append(r"\hline")
 

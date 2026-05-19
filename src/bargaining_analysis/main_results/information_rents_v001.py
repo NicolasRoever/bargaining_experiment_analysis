@@ -110,13 +110,15 @@ def _pval_label(p):
 
 def plot_buyer_surplus_share(df, figsize=(10, 5)):
     """
-    Bar chart of average buyer surplus share across treatments (trades only).
+    Bar chart of average buyer surplus share across treatments (positive gains_from_trade only).
     Left panel: T4 (BuyerCost) vs T2 (SymCost), right panel: T3 (BuyerNoCost) vs T1 (SymNoCost).
     Difference and p-value annotated between each pair.
     """
     set_plot_theme()
 
-    _, trades = _prepare(df)
+    df, trades = _prepare(df)
+    df_plot = df[df["gains_from_trade"] >= 0].copy()
+
 
     TREATMENTS = {
         "T4": "OneSidedCost",
@@ -125,7 +127,7 @@ def plot_buyer_surplus_share(df, figsize=(10, 5)):
         "T1": "TwoSidedNoCost",
     }
 
-    series = {t: trades.loc[trades["treatment"] == t, "buyer_share_realised"].dropna()
+    series = {t: df_plot.loc[df_plot["treatment"] == t, "buyer_share_realised"].dropna()
               for t in TREATMENTS}
 
     def _ci95(s):

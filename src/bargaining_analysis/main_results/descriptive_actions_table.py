@@ -19,15 +19,31 @@ def calculate_bargaining_actions_values(df: pd.DataFrame) -> dict:
     ready to pass into inject_values.
     """
     
+    # compute total offers per negotiation (buyer + seller combined)
+    total_offers_per_neg = (
+        df.groupby('negotiation_id', as_index=False)['number_of_offers']
+        .sum()
+        .rename(columns={'number_of_offers': 'total_offers'})
+    )
+    neg_meta = df.drop_duplicates('negotiation_id')[['negotiation_id', 'treatment', 'time_inconsistency_dummy']]
+    neg_df = neg_meta.merge(total_offers_per_neg, on='negotiation_id')
+
     treatments = ['T1','T2','T3','T4']
     out = {}
-    
+
     for t in treatments:
         grp = df[df['treatment'] == t]
         grp_time = df[(df['treatment'] == t) & (df["time_inconsistency_dummy"] == 0)]
-        
+        grp_neg = neg_df[neg_df['treatment'] == t]
+
+        # total offers per negotiation
+        mean_val = grp_neg['total_offers'].mean()
+        sd_val   = grp_neg['total_offers'].std(ddof=1)
+        out[f'number_of_offers_{t}']    = f"{mean_val:.2f}"
+        out[f'number_of_offers_sd_{t}'] = f"{sd_val:.2f}"
+
         # compute continuous statistics
-        for col in ['number_of_offers', 'payoff']:
+        for col in ['payoff']:
             mean_val = grp[col].mean()
             sd_val   = grp[col].std(ddof=1)
             out[f'{col}_{t}']     = f"{mean_val:.2f}"

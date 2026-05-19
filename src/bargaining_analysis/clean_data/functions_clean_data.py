@@ -1273,49 +1273,53 @@ def print_time_inconsistency_summary(df: pd.DataFrame) -> None:
 
 def apply_technical_exclusion_criteria(df: pd.DataFrame) -> pd.DataFrame:
     """
-    - Exclude all negotiations where the current second of a player is different
-      from the full bargaining time by more than 4 seconds.
     - Exclude all negotiations where there was both acceptance and termination.
-    - Exclude all rows with session_id == "8jp2clvt", group_id_in_session == 4,
-      and round >= 13 (because one player dropped out)
+    - Exclude all negotiations in session '8jp2clvt' where dropout player
+      'dE5arGFL' (participant_label) was involved and oTree round > 29
+      (= user rounds 27-30 after their round-26 dropout).
+    - Exclude all negotiations in session '8jp2clvt' where dropout player
+      'lbnJrtKO' (participant_label) was involved and oTree round > 13
+      (= user rounds 11-30 after their round-10 dropout).
+    Both rows of an affected negotiation are dropped via negotiation_id.
+    oTree round = user round + 3 (user round 1 == oTree round 4).
     """
 
     df_out = df.copy()
-    
-    # Criterion 1: time discrepancy > 4s
-    time_mask = (df_out["current_second"] - df_out["bargaining_time_full_sec"]).abs() > 4
-    bad_time_ids = df_out.loc[time_mask, "negotiation_id"].unique()
-    print(f"Excluding {len(bad_time_ids)} negotiations for time discrepancy > 4s")
-    
-    # Criterion 2: both acceptance and termination present
+
+    # Criterion 1: both acceptance and termination present
     both_mask = (
         df_out["acceptance_time_raw"].notna() &
         df_out["termination_time_raw"].notna()
     )
     bad_both_ids = df_out.loc[both_mask, "negotiation_id"].unique()
     print(f"Excluding {len(bad_both_ids)} negotiations for both acceptance and termination")
-    
-    # Combine negotiation_ids to exclude
-    exclude_ids = set(bad_time_ids) | set(bad_both_ids)
-    
-    # Criterion 3: specific negotiations to exclude (drop both rows)
-    third_mask = (
+
+    exclude_ids = set(bad_both_ids)
+
+    # Criterion 2: dE5arGFL dropout — rounds 27-30 (oTree round > 29)
+    de5_mask = (
         (df_out["session_id"] == "8jp2clvt") &
-        (df_out["group_id_in_session"] == 4) &
-        (df_out["round"] >= 13)
+        (df_out["participant_label"] == "dE5arGFL") &
+        (df_out["round"] > 29)
     )
-    bad_third_ids = df_out.loc[third_mask, "negotiation_id"].unique()
-    print(
-        f"Excluding {len(bad_third_ids)} negotiations for session '8jp2clvt', "
-        "group 4, round >= 13"
+    bad_de5_ids = set(df_out.loc[de5_mask, "negotiation_id"].unique())
+    print(f"Excluding {len(bad_de5_ids)} negotiations for dE5arGFL dropout (rounds 27-30)")
+
+    # Criterion 3: lbnJrtKO dropout — rounds 11-30 (oTree round > 13)
+    lbn_mask = (
+        (df_out["session_id"] == "8jp2clvt") &
+        (df_out["participant_label"] == "lbnJrtKO") &
+        (df_out["round"] > 13)
     )
-    
-    # Filter out all excluded negotiation_ids
+    bad_lbn_ids = set(df_out.loc[lbn_mask, "negotiation_id"].unique())
+    print(f"Excluding {len(bad_lbn_ids)} negotiations for lbnJrtKO dropout (rounds 11-30)")
+
+    exclude_ids |= bad_de5_ids | bad_lbn_ids
+
     filtered_df = df_out.loc[
-        ~df_out["negotiation_id"].isin(exclude_ids) & 
-        ~df_out["negotiation_id"].isin(bad_third_ids)
+        ~df_out["negotiation_id"].isin(exclude_ids)
     ].reset_index(drop=True)
-    
+
     return filtered_df
     
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
