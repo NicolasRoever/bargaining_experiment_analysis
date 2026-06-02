@@ -28,6 +28,8 @@ from src.bargaining_analysis.main_results.comparing_one_two_sided import table_b
 
 from src.bargaining_analysis.main_results.surplus_share_analysis import calculate_mechanism_values_surplus_share
 
+from src.bargaining_analysis.main_results.surplus_share_regression_table import build_surplus_share_regression_table
+
 from src.bargaining_analysis.main_results.process_analysis import plot_offer_distance_to_prediction, calculate_offer_distance_boundary_values, calculate_first_and_last_offers_t4
 
 from src.bargaining_analysis.main_results.sample_waterfall import plot_sample_waterfall
@@ -228,6 +230,13 @@ def task_write_regression_table_one_sided_treatment(
 ):
     df = pd.read_csv(depends_on)
     regression_table_asymmetric_treatment(df, out_path, varlabels_regression)
+
+def task_write_surplus_share_regression_table(
+    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
+    out_path = OVERLEAF_TABLES / "surplus_share_regression_table.tex"
+):
+    df = pd.read_csv(depends_on)
+    build_surplus_share_regression_table(df, out_path)
 
 def task_run_signaling_regressions(
         depends_on = BLD / "data" / "merged_data_full_excluded.csv",

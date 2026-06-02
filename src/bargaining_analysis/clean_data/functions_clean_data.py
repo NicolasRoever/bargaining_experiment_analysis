@@ -640,15 +640,14 @@ def add_row_with_buyer_valuation(df: pd.DataFrame) -> pd.Series:
 
 def filter_out_mistake_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Filters out all rows for any (round, group_id_in_round) where the payoff is larger than termination
+    Filters out all rows for any negotiation where any player's payoff is below -15.
+    Groups by negotiation_id to avoid cross-session contamination.
     """
-    # keep only those groups whose minimum gain is >= -15
     cleaned = (
         df
-        .groupby(['round', 'group_id_in_round'])
+        .groupby('negotiation_id')
         .filter(lambda g: g['payoff'].min() >= -15)
     )
-    # reset_index so the result matches your expected
     return cleaned.reset_index(drop=True)
 
 

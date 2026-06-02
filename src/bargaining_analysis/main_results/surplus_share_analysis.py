@@ -509,23 +509,23 @@ def table_surplus_share_regression(df, varlabels, output_path):
 
     # (1) Realised surplus share, trades only
     m1 = _fit(
-        "buyer_share_realised ~ C(information_asymmetry) + has_cost",
+        "buyer_share_realised ~ C(information_asymmetry) + has_cost + gains_from_trade",
         trades, "participant_code"
     )
     # (2) Realised surplus share, trades only, with interaction
     m2 = _fit(
-        "buyer_share_realised ~ C(information_asymmetry) + has_cost "
+        "buyer_share_realised ~ C(information_asymmetry) + has_cost + gains_from_trade "
         "+ C(information_asymmetry):has_cost",
         trades, "participant_code"
     )
     # (3) Split of GFT, trades with GFT > 0
     m3 = _fit(
-        "split_gains_from_trade ~ C(information_asymmetry) + has_cost",
+        "split_gains_from_trade ~ C(information_asymmetry) + has_cost + gains_from_trade",
         gft_trades, "participant_code"
     )
     # (4) Split of GFT, trades with GFT > 0, with interaction
     m4 = _fit(
-        "split_gains_from_trade ~ C(information_asymmetry) + has_cost "
+        "split_gains_from_trade ~ C(information_asymmetry) + has_cost + gains_from_trade "
         "+ C(information_asymmetry):has_cost",
         gft_trades, "participant_code"
     )
@@ -534,6 +534,7 @@ def table_surplus_share_regression(df, varlabels, output_path):
         "C(information_asymmetry)[T.two-sided]":          r"Two-sided (Sym.\ Uncertainty)",
         "has_cost":                                        r"Transaction Costs",
         "C(information_asymmetry)[T.two-sided]:has_cost": r"Two-sided $\times$ Trans.\ Costs",
+        "gains_from_trade":                                 r"Size of Gains from Trade",
         "Intercept":                                       "Constant",
     }
     combined_labels = {**varlabels, **extra_labels}

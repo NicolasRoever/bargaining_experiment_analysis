@@ -183,10 +183,8 @@ def run_risk_aversion_acceptance_regression(
     model_base = _fit(
         f"accepted_other_offer ~ {controls} + risk_elicitation_choice", base_df
     )
-    model_fe = _fit(
-        f"accepted_other_offer ~ {controls} + risk_elicitation_choice + C(participant_label)",
-        base_df,
-    )
+    # Removed individual fixed-effect regression: risk aversion is measured at
+    # the individual level, so a within-individual FE does not make sense here.
     model_time = _fit(
         f"bargaining_time_full_sec ~ {controls} + risk_elicitation_choice", timing_df
     )
@@ -195,9 +193,6 @@ def run_risk_aversion_acceptance_regression(
         print(f"\n=== Risk aversion → acceptance (baseline controls) ===")
         print(model_base.summary2().tables[1].to_string(float_format=lambda x: f"{x:0.4f}"))
         print(f"n = {int(model_base.nobs)}, adj. R^2 = {model_base.rsquared_adj:0.4f}")
-        print(f"\n=== Risk aversion → acceptance (individual FE) ===")
-        print(model_fe.summary2().tables[1].to_string(float_format=lambda x: f"{x:0.4f}"))
-        print(f"n = {int(model_fe.nobs)}, adj. R^2 = {model_fe.rsquared_adj:0.4f}")
         print(f"\n=== Risk aversion → bargaining time (excl. first 4 sessions) ===")
         print(model_time.summary2().tables[1].to_string(float_format=lambda x: f"{x:0.4f}"))
         print(f"n = {int(model_time.nobs)}, adj. R^2 = {model_time.rsquared_adj:0.4f}")
@@ -205,17 +200,16 @@ def run_risk_aversion_acceptance_regression(
     fix_pandas_append_error()
 
     pystout(
-        models=[model_base, model_fe, model_time],
+        models=[model_base, model_time],
         endog_names=False,
-        mgroups={"Accepted Other's Offer": [1, 2], "Bargaining Time (sec)": [3, 3]},
+        mgroups={"Accepted Other's Offer": [1, 1], "Bargaining Time (sec)": [2, 2]},
         file=output_path,
         digits=3,
         stars={0.1: "*", 0.05: "**", 0.01: "***"},
         varlabels=varlabels_regression,
         exogvars=["risk_elicitation_choice"],
         addrows={
-            "Individual FE": ["", "\\checkmark", ""],
-            "Baseline Controls": ["\\checkmark", "\\checkmark", "\\checkmark"],
+            "Baseline Controls": ["\\checkmark", "\\checkmark"],
         },
         modstat={"nobs": "Obs", "rsquared_adj": r"Adj. R\sym{2}"},
     )
