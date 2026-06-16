@@ -111,24 +111,28 @@ def task_write_descriptive_table(
 
 
 def task_inject_values_for_mistakes(
-    depends_on = BLD / "data" / "merged_data_full_excluded.csv",
-):
-    df = pd.read_csv(depends_on)
+      depends_on = [BLD / "data" / "merged_data_full_excluded.csv",
+                    BLD / "data" / "merged_data_full.csv"],
+  ):
+      df = pd.read_csv(depends_on[0])
+      df_full = pd.read_csv(depends_on[1])
 
-    total_number_mistakes = df["mistake"].sum()
-    total_number_negotiations = round((len(df)) / 2)
-    # Deduplicate to participant level before averaging to avoid over-weighting
-    # participants who appear in more rounds
-    average_session_duration = round(
-        df.groupby("participant_code")["experiment_duration"].first().mean() / 60, 2
-    )
+      total_number_mistakes = df["mistake"].sum()
+      total_number_negotiations_after_exclusion = round((len(df)) / 2)
+      total_number_negotiations_before_exclusion = round((len(df_full)) / 2)
+      average_session_duration = round(
+          df.groupby("participant_code")["experiment_duration"].first().mean() / 60, 2
+      )
+      total_number_mistakes_pre_exclusion = df_full["mistake"].sum()
 
-    inject_values(
-        OVERLEAF_TABLES.parents[1] / "main.tex",
-        total_number_mistakes = total_number_mistakes,
-        total_number_negotiations = total_number_negotiations,
-        average_session_duration = average_session_duration
-    )
+      inject_values(
+          OVERLEAF_TABLES.parents[1] / "main.tex",
+          total_number_mistakes=total_number_mistakes,
+          total_number_negotiations=total_number_negotiations_after_exclusion,
+          total_number_negotiations_pre_exclusion=total_number_negotiations_before_exclusion,
+          average_session_duration=average_session_duration,
+          total_number_mistakes_pre_exclusion=total_number_mistakes_pre_exclusion,
+      )
 
 
 
